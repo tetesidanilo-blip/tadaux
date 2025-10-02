@@ -1,0 +1,4 @@
+project_id = "sgdfvxmkowuklzmbdgxk"
+
+[functions.generate-survey]
+verify_jwt = false
