@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, FileText } from "lucide-react";
+import { Loader2, Upload, FileText, Edit2, Trash2, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Question {
@@ -29,6 +30,8 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [sections, setSections] = useState<Section[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [editingQuestion, setEditingQuestion] = useState<{ sectionIndex: number; questionIndex: number } | null>(null);
+  const [editedQuestion, setEditedQuestion] = useState<Question | null>(null);
   const { toast } = useToast();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -211,6 +214,77 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     });
   };
 
+  const startEditingQuestion = (sectionIndex: number, questionIndex: number) => {
+    setEditingQuestion({ sectionIndex, questionIndex });
+    setEditedQuestion({ ...sections[sectionIndex].questions[questionIndex] });
+  };
+
+  const cancelEditing = () => {
+    setEditingQuestion(null);
+    setEditedQuestion(null);
+  };
+
+  const saveEditedQuestion = () => {
+    if (!editingQuestion || !editedQuestion) return;
+
+    setSections(prev => prev.map((section, sIdx) => {
+      if (sIdx === editingQuestion.sectionIndex) {
+        return {
+          ...section,
+          questions: section.questions.map((q, qIdx) => 
+            qIdx === editingQuestion.questionIndex ? editedQuestion : q
+          )
+        };
+      }
+      return section;
+    }));
+
+    toast({
+      title: "Domanda aggiornata",
+      description: "Le modifiche sono state salvate",
+    });
+
+    cancelEditing();
+  };
+
+  const deleteQuestion = (sectionIndex: number, questionIndex: number) => {
+    setSections(prev => prev.map((section, sIdx) => {
+      if (sIdx === sectionIndex) {
+        const newQuestions = section.questions.filter((_, qIdx) => qIdx !== questionIndex);
+        return { ...section, questions: newQuestions };
+      }
+      return section;
+    }).filter(section => section.questions.length > 0));
+
+    toast({
+      title: "Domanda eliminata",
+      description: "La domanda è stata rimossa",
+    });
+  };
+
+  const updateEditedQuestionOptions = (index: number, value: string) => {
+    if (!editedQuestion) return;
+    const newOptions = [...(editedQuestion.options || [])];
+    newOptions[index] = value;
+    setEditedQuestion({ ...editedQuestion, options: newOptions });
+  };
+
+  const addOptionToEditedQuestion = () => {
+    if (!editedQuestion) return;
+    setEditedQuestion({
+      ...editedQuestion,
+      options: [...(editedQuestion.options || []), ""]
+    });
+  };
+
+  const removeOptionFromEditedQuestion = (index: number) => {
+    if (!editedQuestion) return;
+    setEditedQuestion({
+      ...editedQuestion,
+      options: editedQuestion.options?.filter((_, i) => i !== index)
+    });
+  };
+
   return (
     <div className="min-h-screen py-12 px-4">
       <div className="container max-w-4xl mx-auto">
@@ -366,38 +440,142 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                         </Button>
                       </div>
                       
-                      {section.questions.map((question, questionIndex) => (
-                        <Card key={questionIndex} className="p-4 border-l-4 border-l-primary">
-                          <div className="flex gap-3">
-                            <span className="text-2xl">{getQuestionIcon(question.type)}</span>
-                            <div className="flex-1">
-                              <div className="flex items-start justify-between mb-2">
-                                <h5 className="font-semibold text-lg">
-                                  {questionIndex + 1}. {question.question}
-                                </h5>
-                                {question.required && (
-                                  <span className="text-xs bg-destructive/10 text-destructive px-2 py-1 rounded">
-                                    Obbligatorio
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-sm text-muted-foreground capitalize mb-2">
-                                Tipo: {question.type.replace("_", " ")}
-                              </p>
-                              {question.options && question.options.length > 0 && (
-                                <div className="mt-3 space-y-1">
-                                  <p className="text-sm font-medium">Opzioni:</p>
-                                  <ul className="list-disc list-inside text-sm text-muted-foreground">
-                                    {question.options.map((option, i) => (
-                                      <li key={i}>{option}</li>
-                                    ))}
-                                  </ul>
+                      {section.questions.map((question, questionIndex) => {
+                        const isEditing = editingQuestion?.sectionIndex === sectionIndex && 
+                                         editingQuestion?.questionIndex === questionIndex;
+                        
+                        return (
+                          <Card key={questionIndex} className="p-4 border-l-4 border-l-primary">
+                            {isEditing && editedQuestion ? (
+                              <div className="space-y-4">
+                                <div>
+                                  <label className="text-sm font-medium">Domanda</label>
+                                  <Input
+                                    value={editedQuestion.question}
+                                    onChange={(e) => setEditedQuestion({ ...editedQuestion, question: e.target.value })}
+                                    className="mt-1"
+                                  />
                                 </div>
-                              )}
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
+
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-sm font-medium">Tipo</label>
+                                    <select
+                                      value={editedQuestion.type}
+                                      onChange={(e) => setEditedQuestion({ ...editedQuestion, type: e.target.value })}
+                                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2"
+                                    >
+                                      <option value="multiple_choice">Scelta multipla</option>
+                                      <option value="checkbox">Caselle di controllo</option>
+                                      <option value="short_answer">Risposta breve</option>
+                                      <option value="paragraph">Paragrafo</option>
+                                      <option value="dropdown">Menu a discesa</option>
+                                    </select>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 pt-6">
+                                    <input
+                                      type="checkbox"
+                                      checked={editedQuestion.required}
+                                      onChange={(e) => setEditedQuestion({ ...editedQuestion, required: e.target.checked })}
+                                      className="rounded"
+                                    />
+                                    <label className="text-sm font-medium">Obbligatorio</label>
+                                  </div>
+                                </div>
+
+                                {(editedQuestion.type === "multiple_choice" || 
+                                  editedQuestion.type === "checkbox" || 
+                                  editedQuestion.type === "dropdown") && (
+                                  <div>
+                                    <label className="text-sm font-medium">Opzioni</label>
+                                    <div className="space-y-2 mt-2">
+                                      {editedQuestion.options?.map((option, idx) => (
+                                        <div key={idx} className="flex gap-2">
+                                          <Input
+                                            value={option}
+                                            onChange={(e) => updateEditedQuestionOptions(idx, e.target.value)}
+                                          />
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => removeOptionFromEditedQuestion(idx)}
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </div>
+                                      ))}
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={addOptionToEditedQuestion}
+                                      >
+                                        Aggiungi opzione
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="flex gap-2 justify-end">
+                                  <Button variant="ghost" size="sm" onClick={cancelEditing}>
+                                    <X className="w-4 h-4 mr-1" />
+                                    Annulla
+                                  </Button>
+                                  <Button variant="default" size="sm" onClick={saveEditedQuestion}>
+                                    <Check className="w-4 h-4 mr-1" />
+                                    Salva
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex gap-3">
+                                <span className="text-2xl">{getQuestionIcon(question.type)}</span>
+                                <div className="flex-1">
+                                  <div className="flex items-start justify-between mb-2">
+                                    <h5 className="font-semibold text-lg">
+                                      {questionIndex + 1}. {question.question}
+                                    </h5>
+                                    <div className="flex gap-2 items-center">
+                                      {question.required && (
+                                        <span className="text-xs bg-destructive/10 text-destructive px-2 py-1 rounded">
+                                          Obbligatorio
+                                        </span>
+                                      )}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => startEditingQuestion(sectionIndex, questionIndex)}
+                                      >
+                                        <Edit2 className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => deleteQuestion(sectionIndex, questionIndex)}
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground capitalize mb-2">
+                                    Tipo: {question.type.replace("_", " ")}
+                                  </p>
+                                  {question.options && question.options.length > 0 && (
+                                    <div className="mt-3 space-y-1">
+                                      <p className="text-sm font-medium">Opzioni:</p>
+                                      <ul className="list-disc list-inside text-sm text-muted-foreground">
+                                        {question.options.map((option, i) => (
+                                          <li key={i}>{option}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </Card>
+                        );
+                      })}
                     </div>
                   ))}
                 </div>
