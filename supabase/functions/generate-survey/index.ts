@@ -11,28 +11,47 @@ serve(async (req) => {
   }
 
   try {
-    const { description, hasDocument } = await req.json();
+    const { description, hasDocument, language = 'en' } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    console.log('Generating survey for:', description);
+    console.log('Generating survey for:', description, 'Language:', language);
+
+    const languageNames: Record<string, string> = {
+      'it': 'Italian',
+      'en': 'English',
+      'es': 'Spanish',
+      'fr': 'French',
+      'de': 'German',
+      'pt': 'Portuguese',
+      'nl': 'Dutch',
+      'pl': 'Polish',
+      'ru': 'Russian',
+      'zh': 'Chinese',
+      'ja': 'Japanese',
+      'ko': 'Korean'
+    };
+
+    const targetLanguage = languageNames[language] || 'English';
 
     const systemPrompt = `You are an expert survey designer. Generate professional survey questions based on the user's requirements.
 
+IMPORTANT: Generate ALL questions and options in ${targetLanguage}.
+
 Return a JSON object with a "questions" array. Each question should have:
-- question: The question text
+- question: The question text (in ${targetLanguage})
 - type: One of: "multiple_choice", "checkbox", "short_answer", "paragraph", "dropdown"
-- options: Array of options (only for multiple_choice, checkbox, or dropdown)
+- options: Array of options (in ${targetLanguage}, only for multiple_choice, checkbox, or dropdown)
 - required: Boolean indicating if the question is required
 
 Generate 5-10 relevant questions based on the input.`;
 
     const userPrompt = hasDocument 
-      ? `Convert this document content into survey questions: ${description}\n\nExtract key topics and create survey questions that would gather feedback or information about the document's subject matter.`
-      : `Create a Google Forms survey based on this request: ${description}`;
+      ? `Convert this document content into survey questions in ${targetLanguage}: ${description}\n\nExtract key topics and create survey questions that would gather feedback or information about the document's subject matter.`
+      : `Create a Google Forms survey in ${targetLanguage} based on this request: ${description}`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',

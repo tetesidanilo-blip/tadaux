@@ -27,6 +27,7 @@ interface SurveyGeneratorProps {
 export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const [description, setDescription] = useState("");
   const [sectionName, setSectionName] = useState("");
+  const [language, setLanguage] = useState("it");
   const [isGenerating, setIsGenerating] = useState(false);
   const [sections, setSections] = useState<Section[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -79,7 +80,8 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
       const { data, error } = await supabase.functions.invoke("generate-survey", {
         body: { 
           description: uploadedFile ? `Document: ${uploadedFile.name}` : description,
-          hasDocument: !!uploadedFile 
+          hasDocument: !!uploadedFile,
+          language 
         },
       });
 
@@ -311,6 +313,31 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
 
           <Card className="p-6 backdrop-blur-sm bg-card/50">
             <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Lingua del Questionario *
+                </label>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2"
+                  disabled={isGenerating}
+                >
+                  <option value="it">Italiano</option>
+                  <option value="en">English</option>
+                  <option value="es">Español</option>
+                  <option value="fr">Français</option>
+                  <option value="de">Deutsch</option>
+                  <option value="pt">Português</option>
+                  <option value="nl">Nederlands</option>
+                  <option value="pl">Polski</option>
+                  <option value="ru">Русский</option>
+                  <option value="zh">中文</option>
+                  <option value="ja">日本語</option>
+                  <option value="ko">한국어</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Nome Sezione *
