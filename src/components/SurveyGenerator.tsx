@@ -4,8 +4,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, FileText, Edit2, Trash2, Check, X } from "lucide-react";
+import { Loader2, Upload, FileText, Edit2, Trash2, Check, X, Languages } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Question {
   question: string;
@@ -25,6 +26,7 @@ interface SurveyGeneratorProps {
 }
 
 export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
+  const { language: uiLanguage, setLanguage: setUiLanguage, t } = useLanguage();
   const [description, setDescription] = useState("");
   const [sectionName, setSectionName] = useState("");
   const [language, setLanguage] = useState("it");
@@ -43,13 +45,13 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
           file.type === "application/msword") {
         setUploadedFile(file);
         toast({
-          title: "File uploaded",
-          description: `${file.name} is ready to be processed`,
+          title: t("fileUploaded"),
+          description: `${file.name} ${t("fileReady")}`,
         });
       } else {
         toast({
-          title: "Invalid file type",
-          description: "Please upload a PDF or Word document",
+          title: t("invalidFileType"),
+          description: t("uploadPDFOrWord"),
           variant: "destructive",
         });
       }
@@ -59,8 +61,8 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const handleGenerate = async () => {
     if (!description && !uploadedFile) {
       toast({
-        title: "Input required",
-        description: "Please provide a description or upload a document",
+        title: t("inputRequired"),
+        description: t("provideDescription"),
         variant: "destructive",
       });
       return;
@@ -68,8 +70,8 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
 
     if (!sectionName.trim()) {
       toast({
-        title: "Section name required",
-        description: "Please provide a name for this section",
+        title: t("sectionNameRequired"),
+        description: t("provideSectionName"),
         variant: "destructive",
       });
       return;
@@ -102,14 +104,14 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
       setUploadedFile(null);
 
       toast({
-        title: "Section added!",
-        description: `${newQuestions.length} questions added to "${sectionName}"`,
+        title: t("sectionAdded"),
+        description: `${newQuestions.length} ${t("questionsAdded")} "${sectionName}"`,
       });
     } catch (error) {
       console.error("Error generating survey:", error);
       toast({
-        title: "Generation failed",
-        description: "Failed to generate survey. Please try again.",
+        title: t("generationFailed"),
+        description: t("failedToGenerate"),
         variant: "destructive",
       });
     } finally {
@@ -195,24 +197,24 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     document.body.removeChild(link);
 
     toast({
-      title: "CSV exported!",
-      description: "Import this file into Google Forms",
+      title: t("csvExported"),
+      description: t("importToGoogleForms"),
     });
   };
 
   const removeSection = (sectionName: string) => {
     setSections(prev => prev.filter(s => s.name !== sectionName));
     toast({
-      title: "Section removed",
-      description: `"${sectionName}" has been removed`,
+      title: t("sectionRemoved"),
+      description: `"${sectionName}" ${t("hasBeenRemoved")}`,
     });
   };
 
   const clearAllSections = () => {
     setSections([]);
     toast({
-      title: "All sections cleared",
-      description: "Survey has been reset",
+      title: t("allSectionsCleared"),
+      description: t("surveyReset"),
     });
   };
 
@@ -242,8 +244,8 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     }));
 
     toast({
-      title: "Domanda aggiornata",
-      description: "Le modifiche sono state salvate",
+      title: t("questionUpdated"),
+      description: t("changesSaved"),
     });
 
     cancelEditing();
@@ -259,8 +261,8 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     }).filter(section => section.questions.length > 0));
 
     toast({
-      title: "Domanda eliminata",
-      description: "La domanda è stata rimossa",
+      title: t("questionDeleted"),
+      description: t("questionRemoved"),
     });
   };
 
@@ -290,23 +292,33 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   return (
     <div className="min-h-screen py-12 px-4">
       <div className="container max-w-4xl mx-auto">
-        <Button 
-          variant="ghost" 
-          onClick={onBack}
-          className="mb-8"
-        >
-          ← Back to Home
-        </Button>
+        <div className="flex items-center justify-between mb-8">
+          <Button 
+            variant="ghost" 
+            onClick={onBack}
+          >
+            ← {t("backToHome")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setUiLanguage(uiLanguage === "en" ? "it" : "en")}
+            className="flex items-center gap-2"
+          >
+            <Languages className="w-4 h-4" />
+            {uiLanguage === "en" ? "IT" : "EN"}
+          </Button>
+        </div>
 
         <div className="space-y-8">
           <div>
-            <h2 className="text-3xl font-bold mb-2">Create Your Survey</h2>
+            <h2 className="text-3xl font-bold mb-2">{t("createYourSurvey")}</h2>
             <p className="text-muted-foreground">
-              Genera domande per sezione e costruisci il tuo questionario completo
+              {t("surveyDescription")}
             </p>
             {sections.length > 0 && (
               <p className="text-sm text-primary mt-2">
-                {sections.length} {sections.length === 1 ? 'sezione' : 'sezioni'} • {getAllQuestions().length} domande totali
+                {sections.length} {sections.length === 1 ? t("section") : t("sections")} • {getAllQuestions().length} {t("totalQuestions")}
               </p>
             )}
           </div>
@@ -315,7 +327,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Lingua del Questionario *
+                  {t("surveyLanguage")} *
                 </label>
                 <select
                   value={language}
@@ -340,10 +352,10 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
 
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Nome Sezione *
+                  {t("sectionName")} *
                 </label>
                 <Textarea
-                  placeholder="Esempio: Informazioni personali, Soddisfazione del cliente, Feedback sul prodotto..."
+                  placeholder={t("sectionNamePlaceholder")}
                   value={sectionName}
                   onChange={(e) => setSectionName(e.target.value)}
                   className="min-h-20"
@@ -353,10 +365,10 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
 
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Descrizione Domande
+                  {t("questionDescription")}
                 </label>
                 <Textarea
-                  placeholder="Esempio: Crea domande sulla qualità del prodotto, velocità di consegna e servizio clienti..."
+                  placeholder={t("questionDescriptionPlaceholder")}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="min-h-32"
@@ -374,7 +386,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
 
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Upload Document
+                  {t("uploadDocument")}
                 </label>
                 <div className="flex items-center gap-4">
                   <Button
@@ -384,7 +396,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                     className="flex items-center gap-2"
                   >
                     <Upload className="w-4 h-4" />
-                    {uploadedFile ? uploadedFile.name : "Choose File"}
+                    {uploadedFile ? uploadedFile.name : t("chooseFile")}
                   </Button>
                   {uploadedFile && (
                     <Button
@@ -392,7 +404,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                       size="sm"
                       onClick={() => setUploadedFile(null)}
                     >
-                      Clear
+                      {t("clear")}
                     </Button>
                   )}
                 </div>
@@ -404,7 +416,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                   onChange={handleFileUpload}
                 />
                 <p className="text-xs text-muted-foreground mt-2">
-                  Supports PDF and Word documents
+                  {t("supportsFiles")}
                 </p>
               </div>
 
@@ -421,10 +433,10 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generazione in corso...
+                    {t("generating")}
                   </>
                 ) : (
-                  sections.length > 0 ? "Aggiungi Nuova Sezione" : "Genera Prima Sezione"
+                  sections.length > 0 ? t("addNewSection") : t("generateFirstSection")
                 )}
               </Button>
             </div>
@@ -434,19 +446,19 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
             <Card className="p-6 backdrop-blur-sm bg-card/50">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-2xl font-bold">Il Tuo Questionario</h3>
+                  <h3 className="text-2xl font-bold">{t("yourSurvey")}</h3>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       onClick={exportToCSV}
                     >
-                      Scarica CSV
+                      {t("downloadCSV")}
                     </Button>
                     <Button
                       variant="outline"
                       onClick={clearAllSections}
                     >
-                      Cancella Tutto
+                      {t("clearAll")}
                     </Button>
                   </div>
                 </div>
@@ -463,7 +475,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                           size="sm"
                           onClick={() => removeSection(section.name)}
                         >
-                          Rimuovi Sezione
+                          {t("removeSection")}
                         </Button>
                       </div>
                       
@@ -476,7 +488,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                             {isEditing && editedQuestion ? (
                               <div className="space-y-4">
                                 <div>
-                                  <label className="text-sm font-medium">Domanda</label>
+                                  <label className="text-sm font-medium">{t("question")}</label>
                                   <Input
                                     value={editedQuestion.question}
                                     onChange={(e) => setEditedQuestion({ ...editedQuestion, question: e.target.value })}
@@ -486,17 +498,17 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
 
                                 <div className="grid grid-cols-2 gap-4">
                                   <div>
-                                    <label className="text-sm font-medium">Tipo</label>
+                                    <label className="text-sm font-medium">{t("type")}</label>
                                     <select
                                       value={editedQuestion.type}
                                       onChange={(e) => setEditedQuestion({ ...editedQuestion, type: e.target.value })}
                                       className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2"
                                     >
-                                      <option value="multiple_choice">Scelta multipla</option>
-                                      <option value="checkbox">Caselle di controllo</option>
-                                      <option value="short_answer">Risposta breve</option>
-                                      <option value="paragraph">Paragrafo</option>
-                                      <option value="dropdown">Menu a discesa</option>
+                                      <option value="multiple_choice">{t("multipleChoice")}</option>
+                                      <option value="checkbox">{t("checkboxes")}</option>
+                                      <option value="short_answer">{t("shortAnswer")}</option>
+                                      <option value="paragraph">{t("paragraph")}</option>
+                                      <option value="dropdown">{t("dropdown")}</option>
                                     </select>
                                   </div>
 
@@ -507,7 +519,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                                       onChange={(e) => setEditedQuestion({ ...editedQuestion, required: e.target.checked })}
                                       className="rounded"
                                     />
-                                    <label className="text-sm font-medium">Obbligatorio</label>
+                                    <label className="text-sm font-medium">{t("required")}</label>
                                   </div>
                                 </div>
 
@@ -515,7 +527,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                                   editedQuestion.type === "checkbox" || 
                                   editedQuestion.type === "dropdown") && (
                                   <div>
-                                    <label className="text-sm font-medium">Opzioni</label>
+                                    <label className="text-sm font-medium">{t("options")}</label>
                                     <div className="space-y-2 mt-2">
                                       {editedQuestion.options?.map((option, idx) => (
                                         <div key={idx} className="flex gap-2">
@@ -537,7 +549,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                                         size="sm"
                                         onClick={addOptionToEditedQuestion}
                                       >
-                                        Aggiungi opzione
+                                        {t("addOption")}
                                       </Button>
                                     </div>
                                   </div>
@@ -546,11 +558,11 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                                 <div className="flex gap-2 justify-end">
                                   <Button variant="ghost" size="sm" onClick={cancelEditing}>
                                     <X className="w-4 h-4 mr-1" />
-                                    Annulla
+                                    {t("cancel")}
                                   </Button>
                                   <Button variant="default" size="sm" onClick={saveEditedQuestion}>
                                     <Check className="w-4 h-4 mr-1" />
-                                    Salva
+                                    {t("save")}
                                   </Button>
                                 </div>
                               </div>
