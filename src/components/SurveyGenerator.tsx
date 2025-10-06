@@ -11,6 +11,12 @@ interface Question {
   type: string;
   options?: string[];
   required: boolean;
+  section?: string;
+}
+
+interface Section {
+  name: string;
+  questions: Question[];
 }
 
 interface SurveyGeneratorProps {
@@ -19,8 +25,9 @@ interface SurveyGeneratorProps {
 
 export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const [description, setDescription] = useState("");
+  const [sectionName, setSectionName] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const { toast } = useToast();
 
@@ -55,6 +62,15 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
       return;
     }
 
+    if (!sectionName.trim()) {
+      toast({
+        title: "Section name required",
+        description: "Please provide a name for this section",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("generate-survey", {
@@ -66,10 +82,23 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
 
       if (error) throw error;
 
-      setQuestions(data.questions);
+      const newQuestions = data.questions.map((q: Question) => ({
+        ...q,
+        section: sectionName
+      }));
+
+      setSections(prev => [...prev, {
+        name: sectionName,
+        questions: newQuestions
+      }]);
+
+      setDescription("");
+      setSectionName("");
+      setUploadedFile(null);
+
       toast({
-        title: "Survey generated!",
-        description: "Your survey questions are ready",
+        title: "Section added!",
+        description: `${newQuestions.length} questions added to "${sectionName}"`,
       });
     } catch (error) {
       console.error("Error generating survey:", error);
@@ -100,7 +129,13 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     }
   };
 
+  const getAllQuestions = () => {
+    return sections.flatMap(s => s.questions);
+  };
+
   const exportToCSV = () => {
+    const allQuestions = getAllQuestions();
+    
     // Map question types to Google Forms format
     const mapQuestionType = (type: string) => {
       switch (type) {
@@ -119,14 +154,15 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
       }
     };
 
-    // Create CSV header
-    const maxOptions = Math.max(...questions.map(q => q.options?.length || 0));
+    // Create CSV header with Section column
+    const maxOptions = Math.max(...allQuestions.map(q => q.options?.length || 0), 0);
     const optionHeaders = Array.from({ length: maxOptions }, (_, i) => `Option ${i + 1}`);
-    const headers = ["Question", "Type", "Required", ...optionHeaders];
+    const headers = ["Section", "Question", "Type", "Required", ...optionHeaders];
     
     // Create CSV rows
-    const rows = questions.map(q => {
+    const rows = allQuestions.map(q => {
       const row = [
+        `"${(q.section || "").replace(/"/g, '""')}"`,
         `"${q.question.replace(/"/g, '""')}"`,
         mapQuestionType(q.type),
         q.required ? "Yes" : "No",
@@ -159,6 +195,22 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     });
   };
 
+  const removeSection = (sectionName: string) => {
+    setSections(prev => prev.filter(s => s.name !== sectionName));
+    toast({
+      title: "Section removed",
+      description: `"${sectionName}" has been removed`,
+    });
+  };
+
+  const clearAllSections = () => {
+    setSections([]);
+    toast({
+      title: "All sections cleared",
+      description: "Survey has been reset",
+    });
+  };
+
   return (
     <div className="min-h-screen py-12 px-4">
       <div className="container max-w-4xl mx-auto">
@@ -174,18 +226,36 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
           <div>
             <h2 className="text-3xl font-bold mb-2">Create Your Survey</h2>
             <p className="text-muted-foreground">
-              Describe your survey needs or upload a document to get started
+              Genera domande per sezione e costruisci il tuo questionario completo
             </p>
+            {sections.length > 0 && (
+              <p className="text-sm text-primary mt-2">
+                {sections.length} {sections.length === 1 ? 'sezione' : 'sezioni'} • {getAllQuestions().length} domande totali
+              </p>
+            )}
           </div>
 
           <Card className="p-6 backdrop-blur-sm bg-card/50">
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Survey Description
+                  Nome Sezione *
                 </label>
                 <Textarea
-                  placeholder="Example: Create a customer satisfaction survey with questions about product quality, delivery speed, and customer service..."
+                  placeholder="Esempio: Informazioni personali, Soddisfazione del cliente, Feedback sul prodotto..."
+                  value={sectionName}
+                  onChange={(e) => setSectionName(e.target.value)}
+                  className="min-h-20"
+                  disabled={isGenerating}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Descrizione Domande
+                </label>
+                <Textarea
+                  placeholder="Esempio: Crea domande sulla qualità del prodotto, velocità di consegna e servizio clienti..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="min-h-32"
@@ -239,7 +309,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
 
               <Button
                 onClick={handleGenerate}
-                disabled={isGenerating || (!description && !uploadedFile)}
+                disabled={isGenerating || (!description && !uploadedFile) || !sectionName.trim()}
                 className="w-full"
                 size="lg"
                 style={{
@@ -250,77 +320,85 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating Survey...
+                    Generazione in corso...
                   </>
                 ) : (
-                  "Generate Survey"
+                  sections.length > 0 ? "Aggiungi Nuova Sezione" : "Genera Prima Sezione"
                 )}
               </Button>
             </div>
           </Card>
 
-          {questions.length > 0 && (
+          {sections.length > 0 && (
             <Card className="p-6 backdrop-blur-sm bg-card/50">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-2xl font-bold">Generated Survey Questions</h3>
+                  <h3 className="text-2xl font-bold">Il Tuo Questionario</h3>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       onClick={exportToCSV}
                     >
-                      Download CSV
+                      Scarica CSV
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => {
-                        const surveyText = questions.map((q, i) => 
-                          `${i + 1}. ${q.question}\nType: ${q.type}\nRequired: ${q.required ? "Yes" : "No"}${q.options ? `\nOptions: ${q.options.join(", ")}` : ""}`
-                        ).join("\n\n");
-                        navigator.clipboard.writeText(surveyText);
-                        toast({
-                          title: "Copied!",
-                          description: "Survey copied to clipboard",
-                        });
-                      }}
+                      onClick={clearAllSections}
                     >
-                      Copy All
+                      Cancella Tutto
                     </Button>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  {questions.map((question, index) => (
-                    <Card key={index} className="p-4 border-l-4 border-l-primary">
-                      <div className="flex gap-3">
-                        <span className="text-2xl">{getQuestionIcon(question.type)}</span>
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between mb-2">
-                            <h4 className="font-semibold text-lg">
-                              {index + 1}. {question.question}
-                            </h4>
-                            {question.required && (
-                              <span className="text-xs bg-destructive/10 text-destructive px-2 py-1 rounded">
-                                Required
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground capitalize mb-2">
-                            Type: {question.type.replace("_", " ")}
-                          </p>
-                          {question.options && question.options.length > 0 && (
-                            <div className="mt-3 space-y-1">
-                              <p className="text-sm font-medium">Options:</p>
-                              <ul className="list-disc list-inside text-sm text-muted-foreground">
-                                {question.options.map((option, i) => (
-                                  <li key={i}>{option}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
+                <div className="space-y-6">
+                  {sections.map((section, sectionIndex) => (
+                    <div key={sectionIndex} className="space-y-4">
+                      <div className="flex items-center justify-between border-b pb-2">
+                        <h4 className="text-xl font-bold text-primary">
+                          {section.name}
+                        </h4>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeSection(section.name)}
+                        >
+                          Rimuovi Sezione
+                        </Button>
                       </div>
-                    </Card>
+                      
+                      {section.questions.map((question, questionIndex) => (
+                        <Card key={questionIndex} className="p-4 border-l-4 border-l-primary">
+                          <div className="flex gap-3">
+                            <span className="text-2xl">{getQuestionIcon(question.type)}</span>
+                            <div className="flex-1">
+                              <div className="flex items-start justify-between mb-2">
+                                <h5 className="font-semibold text-lg">
+                                  {questionIndex + 1}. {question.question}
+                                </h5>
+                                {question.required && (
+                                  <span className="text-xs bg-destructive/10 text-destructive px-2 py-1 rounded">
+                                    Obbligatorio
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground capitalize mb-2">
+                                Tipo: {question.type.replace("_", " ")}
+                              </p>
+                              {question.options && question.options.length > 0 && (
+                                <div className="mt-3 space-y-1">
+                                  <p className="text-sm font-medium">Opzioni:</p>
+                                  <ul className="list-disc list-inside text-sm text-muted-foreground">
+                                    {question.options.map((option, i) => (
+                                      <li key={i}>{option}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
                   ))}
                 </div>
 
@@ -328,10 +406,9 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                   <div className="flex gap-2 items-start">
                     <FileText className="w-5 h-5 text-primary mt-0.5" />
                     <div>
-                      <p className="font-medium mb-1">Export to Google Forms</p>
+                      <p className="font-medium mb-1">Esporta su Google Forms</p>
                       <p className="text-sm text-muted-foreground">
-                        Copy these questions and paste them into Google Forms. 
-                        Match the question types and options as shown above.
+                        Scarica il CSV e importalo in Google Forms. Le sezioni e le domande verranno organizzate automaticamente.
                       </p>
                     </div>
                   </div>
