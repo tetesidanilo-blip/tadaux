@@ -100,6 +100,65 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     }
   };
 
+  const exportToCSV = () => {
+    // Map question types to Google Forms format
+    const mapQuestionType = (type: string) => {
+      switch (type) {
+        case "multiple_choice":
+          return "Multiple choice";
+        case "checkbox":
+          return "Checkboxes";
+        case "short_answer":
+          return "Short answer";
+        case "paragraph":
+          return "Paragraph";
+        case "dropdown":
+          return "Dropdown";
+        default:
+          return "Short answer";
+      }
+    };
+
+    // Create CSV header
+    const maxOptions = Math.max(...questions.map(q => q.options?.length || 0));
+    const optionHeaders = Array.from({ length: maxOptions }, (_, i) => `Option ${i + 1}`);
+    const headers = ["Question", "Type", "Required", ...optionHeaders];
+    
+    // Create CSV rows
+    const rows = questions.map(q => {
+      const row = [
+        `"${q.question.replace(/"/g, '""')}"`,
+        mapQuestionType(q.type),
+        q.required ? "Yes" : "No",
+        ...(q.options || []).map(opt => `"${opt.replace(/"/g, '""')}"`),
+      ];
+      // Pad with empty strings if fewer options than max
+      while (row.length < headers.length) {
+        row.push("");
+      }
+      return row.join(",");
+    });
+
+    // Combine headers and rows
+    const csv = [headers.join(","), ...rows].join("\n");
+
+    // Create and download the file
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "google-forms-survey.csv");
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "CSV exported!",
+      description: "Import this file into Google Forms",
+    });
+  };
+
   return (
     <div className="min-h-screen py-12 px-4">
       <div className="container max-w-4xl mx-auto">
@@ -205,21 +264,29 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-2xl font-bold">Generated Survey Questions</h3>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      const surveyText = questions.map((q, i) => 
-                        `${i + 1}. ${q.question}\nType: ${q.type}\nRequired: ${q.required ? "Yes" : "No"}${q.options ? `\nOptions: ${q.options.join(", ")}` : ""}`
-                      ).join("\n\n");
-                      navigator.clipboard.writeText(surveyText);
-                      toast({
-                        title: "Copied!",
-                        description: "Survey copied to clipboard",
-                      });
-                    }}
-                  >
-                    Copy All
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={exportToCSV}
+                    >
+                      Download CSV
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const surveyText = questions.map((q, i) => 
+                          `${i + 1}. ${q.question}\nType: ${q.type}\nRequired: ${q.required ? "Yes" : "No"}${q.options ? `\nOptions: ${q.options.join(", ")}` : ""}`
+                        ).join("\n\n");
+                        navigator.clipboard.writeText(surveyText);
+                        toast({
+                          title: "Copied!",
+                          description: "Survey copied to clipboard",
+                        });
+                      }}
+                    >
+                      Copy All
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
