@@ -11,14 +11,14 @@ serve(async (req) => {
   }
 
   try {
-    const { description, hasDocument, language = 'en' } = await req.json();
+    const { description, hasDocument, language = 'en', refineQuestion } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    console.log('Generating survey for:', description, 'Language:', language);
+    console.log('Generating survey for:', description || refineQuestion, 'Language:', language);
 
     const languageNames: Record<string, string> = {
       'it': 'Italian',
@@ -37,7 +37,33 @@ serve(async (req) => {
 
     const targetLanguage = languageNames[language] || 'English';
 
-    const systemPrompt = `You are an expert survey designer. Generate professional survey questions based on the user's requirements.
+    let systemPrompt: string;
+    let userPrompt: string;
+
+    if (refineQuestion) {
+      // Mode: refine a single question based on feedback
+      systemPrompt = `You are an expert survey designer. You will refine an existing survey question based on user feedback.
+
+IMPORTANT: Generate the refined question and options in ${targetLanguage}.
+
+Return a JSON object with a "questions" array containing ONLY ONE refined question with:
+- question: The refined question text (in ${targetLanguage})
+- type: "${refineQuestion.type}"
+- options: Array of refined options (in ${targetLanguage}, only if the original had options)
+- required: Boolean (same as original)
+
+Apply the user's feedback to improve the question while maintaining its core purpose.`;
+
+      userPrompt = `Original question: "${refineQuestion.question}"
+Type: ${refineQuestion.type}
+${refineQuestion.options ? `Options: ${refineQuestion.options.join(', ')}` : ''}
+
+User feedback: "${refineQuestion.feedback}"
+
+Refine this question based on the feedback. Keep it in ${targetLanguage}.`;
+    } else {
+      // Mode: generate new questions
+      systemPrompt = `You are an expert survey designer. Generate professional survey questions based on the user's requirements.
 
 IMPORTANT: Generate ALL questions and options in ${targetLanguage}.
 
@@ -49,9 +75,10 @@ Return a JSON object with a "questions" array. Each question should have:
 
 Generate 5-10 relevant questions based on the input.`;
 
-    const userPrompt = hasDocument 
-      ? `Convert this document content into survey questions in ${targetLanguage}: ${description}\n\nExtract key topics and create survey questions that would gather feedback or information about the document's subject matter.`
-      : `Create a Google Forms survey in ${targetLanguage} based on this request: ${description}`;
+      userPrompt = hasDocument 
+        ? `Convert this document content into survey questions in ${targetLanguage}: ${description}\n\nExtract key topics and create survey questions that would gather feedback or information about the document's subject matter.`
+        : `Create a Google Forms survey in ${targetLanguage} based on this request: ${description}`;
+    }
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',

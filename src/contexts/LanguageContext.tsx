@@ -55,7 +55,6 @@ const translations = {
     options: "Options",
     addOption: "Add Option",
     save: "Save",
-    cancel: "Cancel",
     
     // Toast messages
     fileUploaded: "File uploaded",
@@ -87,6 +86,20 @@ const translations = {
     feedbackSavedDesc: "Your feedback has been saved for this question",
     generateMore: "Generate more questions",
     newQuestionsAdded: "new questions added to this section",
+    applyFeedback: "Apply Feedback",
+    extendToOthers: "Extend to Other Questions",
+    selectAll: "Select All",
+    deselectAll: "Deselect All",
+    questionsSelected: "questions selected",
+    applying: "Applying...",
+    applyingFeedback: "Applying feedback...",
+    feedbackApplied: "Feedback applied",
+    feedbackAppliedDesc: "The questions have been regenerated",
+    cancel: "Cancel",
+    noFeedback: "No feedback",
+    noFeedbackDesc: "Please add feedback before applying",
+    questionsUpdated: "questions updated",
+    sourceQuestion: "Source",
   },
   it: {
     // Hero
@@ -134,7 +147,6 @@ const translations = {
     options: "Opzioni",
     addOption: "Aggiungi Opzione",
     save: "Salva",
-    cancel: "Annulla",
     
     // Toast messages
     fileUploaded: "File caricato",
@@ -166,6 +178,20 @@ const translations = {
     feedbackSavedDesc: "Il tuo feedback è stato salvato per questa domanda",
     generateMore: "Genera altre domande",
     newQuestionsAdded: "nuove domande aggiunte a questa sezione",
+    applyFeedback: "Applica Feedback",
+    extendToOthers: "Estendi ad Altre Domande",
+    selectAll: "Seleziona Tutto",
+    deselectAll: "Deseleziona Tutto",
+    questionsSelected: "domande selezionate",
+    applying: "Applicazione...",
+    applyingFeedback: "Applicazione feedback...",
+    feedbackApplied: "Feedback applicato",
+    feedbackAppliedDesc: "Le domande sono state rigenerate",
+    cancel: "Annulla",
+    noFeedback: "Nessun feedback",
+    noFeedbackDesc: "Aggiungi un feedback prima di applicarlo",
+    questionsUpdated: "domande aggiornate",
+    sourceQuestion: "Sorgente",
   }
 };
 
