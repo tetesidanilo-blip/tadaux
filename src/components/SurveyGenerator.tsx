@@ -853,124 +853,124 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                                   {feedbackMode === 'multiple' && isSourceQuestion && (
                                     <div className="w-6 h-6 mt-1 flex-shrink-0" />
                                   )}
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild disabled={feedbackMode === 'multiple'}>
-                                      <button className="text-2xl hover:bg-muted/50 rounded px-1 py-1 transition-colors cursor-pointer" title="Cambia tipo di domanda">
-                                        {getQuestionIcon(question.type)}
-                                      </button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent className="bg-background">
-                                      <DropdownMenuItem 
-                                        onClick={() => {
-                                          setSections(prev => prev.map((section, sIdx) => {
-                                            if (sIdx === sectionIndex) {
-                                              return {
-                                                ...section,
-                                                questions: section.questions.map((q, qIdx) => 
-                                                  qIdx === questionIndex 
-                                                    ? { ...q, type: 'multiple_choice', options: q.options || ['Opzione 1', 'Opzione 2'] }
-                                                    : q
-                                                )
-                                              };
-                                            }
-                                            return section;
-                                          }));
-                                        }}
-                                      >
-                                        <span className="text-xl mr-2">○</span> Scelta multipla
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem 
-                                        onClick={() => {
-                                          setSections(prev => prev.map((section, sIdx) => {
-                                            if (sIdx === sectionIndex) {
-                                              return {
-                                                ...section,
-                                                questions: section.questions.map((q, qIdx) => 
-                                                  qIdx === questionIndex 
-                                                    ? { ...q, type: 'checkbox', options: q.options || ['Opzione 1', 'Opzione 2'] }
-                                                    : q
-                                                )
-                                              };
-                                            }
-                                            return section;
-                                          }));
-                                        }}
-                                      >
-                                        <span className="text-xl mr-2">☐</span> Caselle di controllo
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem 
-                                        onClick={() => {
-                                          setSections(prev => prev.map((section, sIdx) => {
-                                            if (sIdx === sectionIndex) {
-                                              return {
-                                                ...section,
-                                                questions: section.questions.map((q, qIdx) => 
-                                                  qIdx === questionIndex 
-                                                    ? { ...q, type: 'short_answer', options: undefined }
-                                                    : q
-                                                )
-                                              };
-                                            }
-                                            return section;
-                                          }));
-                                        }}
-                                      >
-                                        <span className="text-xl mr-2">___</span> Risposta breve
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem 
-                                        onClick={() => {
-                                          setSections(prev => prev.map((section, sIdx) => {
-                                            if (sIdx === sectionIndex) {
-                                              return {
-                                                ...section,
-                                                questions: section.questions.map((q, qIdx) => 
-                                                  qIdx === questionIndex 
-                                                    ? { ...q, type: 'paragraph', options: undefined }
-                                                    : q
-                                                )
-                                              };
-                                            }
-                                            return section;
-                                          }));
-                                        }}
-                                      >
-                                        <span className="text-xl mr-2">¶</span> Paragrafo
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem 
-                                        onClick={() => {
-                                          setSections(prev => prev.map((section, sIdx) => {
-                                            if (sIdx === sectionIndex) {
-                                              return {
-                                                ...section,
-                                                questions: section.questions.map((q, qIdx) => 
-                                                  qIdx === questionIndex 
-                                                    ? { ...q, type: 'dropdown', options: q.options || ['Opzione 1', 'Opzione 2'] }
-                                                    : q
-                                                )
-                                              };
-                                            }
-                                            return section;
-                                          }));
-                                        }}
-                                      >
-                                        <span className="text-xl mr-2">▼</span> Menu a tendina
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                  <div className="flex-1">
-                                    <div className="flex items-start justify-between mb-2">
-                                      <h5 className="font-semibold text-lg">
-                                        {questionIndex + 1}. {question.question}
-                                      </h5>
-                                       <div className="flex gap-2 items-center">
+                                  <div className="flex-1 space-y-4">
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex items-start gap-3 flex-1">
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild disabled={feedbackMode === 'multiple'}>
+                                            <button className="text-2xl hover:bg-muted/50 rounded px-1 py-1 transition-colors cursor-pointer mt-1" title="Cambia tipo di domanda">
+                                              {getQuestionIcon(question.type)}
+                                            </button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent className="bg-background">
+                                            <DropdownMenuItem 
+                                              onClick={() => {
+                                                setSections(prev => prev.map((section, sIdx) => {
+                                                  if (sIdx === sectionIndex) {
+                                                    return {
+                                                      ...section,
+                                                      questions: section.questions.map((q, qIdx) => 
+                                                        qIdx === questionIndex 
+                                                          ? { ...q, type: 'multiple_choice', options: q.options || ['Opzione 1', 'Opzione 2'] }
+                                                          : q
+                                                      )
+                                                    };
+                                                  }
+                                                  return section;
+                                                }));
+                                              }}
+                                            >
+                                              <span className="text-xl mr-2">○</span> Scelta multipla
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                              onClick={() => {
+                                                setSections(prev => prev.map((section, sIdx) => {
+                                                  if (sIdx === sectionIndex) {
+                                                    return {
+                                                      ...section,
+                                                      questions: section.questions.map((q, qIdx) => 
+                                                        qIdx === questionIndex 
+                                                          ? { ...q, type: 'checkbox', options: q.options || ['Opzione 1', 'Opzione 2'] }
+                                                          : q
+                                                      )
+                                                    };
+                                                  }
+                                                  return section;
+                                                }));
+                                              }}
+                                            >
+                                              <span className="text-xl mr-2">☐</span> Caselle di controllo
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                              onClick={() => {
+                                                setSections(prev => prev.map((section, sIdx) => {
+                                                  if (sIdx === sectionIndex) {
+                                                    return {
+                                                      ...section,
+                                                      questions: section.questions.map((q, qIdx) => 
+                                                        qIdx === questionIndex 
+                                                          ? { ...q, type: 'short_answer', options: undefined }
+                                                          : q
+                                                      )
+                                                    };
+                                                  }
+                                                  return section;
+                                                }));
+                                              }}
+                                            >
+                                              <span className="text-xl mr-2">___</span> Risposta breve
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                              onClick={() => {
+                                                setSections(prev => prev.map((section, sIdx) => {
+                                                  if (sIdx === sectionIndex) {
+                                                    return {
+                                                      ...section,
+                                                      questions: section.questions.map((q, qIdx) => 
+                                                        qIdx === questionIndex 
+                                                          ? { ...q, type: 'paragraph', options: undefined }
+                                                          : q
+                                                      )
+                                                    };
+                                                  }
+                                                  return section;
+                                                }));
+                                              }}
+                                            >
+                                              <span className="text-xl mr-2">¶</span> Paragrafo
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                              onClick={() => {
+                                                setSections(prev => prev.map((section, sIdx) => {
+                                                  if (sIdx === sectionIndex) {
+                                                    return {
+                                                      ...section,
+                                                      questions: section.questions.map((q, qIdx) => 
+                                                        qIdx === questionIndex 
+                                                          ? { ...q, type: 'dropdown', options: q.options || ['Opzione 1', 'Opzione 2'] }
+                                                          : q
+                                                      )
+                                                    };
+                                                  }
+                                                  return section;
+                                                }));
+                                              }}
+                                            >
+                                              <span className="text-xl mr-2">▼</span> Menu a tendina
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                        <h5 className="font-medium text-base flex-1">
+                                          {questionIndex + 1}. {question.question}
+                                          {question.required && (
+                                            <span className="text-destructive ml-1">*</span>
+                                          )}
+                                        </h5>
+                                      </div>
+                                      <div className="flex gap-2 items-center">
                                         {feedbackMode === 'multiple' && isSourceQuestion && (
                                           <span className="text-xs bg-secondary/20 text-secondary-foreground px-2 py-1 rounded font-medium">
                                             {t("sourceQuestion")}
-                                          </span>
-                                        )}
-                                        {question.required && (
-                                          <span className="text-xs bg-destructive/10 text-destructive px-2 py-1 rounded">
-                                            Obbligatorio
                                           </span>
                                         )}
                                         {feedbackMode !== 'multiple' && (
@@ -1001,24 +1001,55 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                                         )}
                                       </div>
                                     </div>
-                                    <p className="text-sm text-muted-foreground capitalize mb-2">
-                                      Tipo: {question.type.replace("_", " ")}
-                                    </p>
-                                    {question.options && question.options.length > 0 && (
-                                      <div className="mt-3 space-y-1">
-                                        <p className="text-sm font-medium">Opzioni:</p>
-                                        <ul className="list-disc list-inside text-sm text-muted-foreground">
+
+                                    {/* Google Forms Style Preview */}
+                                    <div className="ml-11">
+                                      {question.type === "multiple_choice" && question.options && (
+                                        <div className="space-y-2">
                                           {question.options.map((option, i) => (
-                                            <li key={i}>{option}</li>
+                                            <div key={i} className="flex items-center gap-3">
+                                              <div className="w-4 h-4 rounded-full border-2 border-muted-foreground" />
+                                              <span className="text-sm">{option}</span>
+                                            </div>
                                           ))}
-                                        </ul>
-                                      </div>
-                                    )}
+                                        </div>
+                                      )}
+
+                                      {question.type === "checkbox" && question.options && (
+                                        <div className="space-y-2">
+                                          {question.options.map((option, i) => (
+                                            <div key={i} className="flex items-center gap-3">
+                                              <div className="w-4 h-4 border-2 border-muted-foreground rounded" />
+                                              <span className="text-sm">{option}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      {question.type === "short_answer" && (
+                                        <div className="border-b border-muted-foreground/30 pb-2 w-full max-w-md">
+                                          <span className="text-sm text-muted-foreground">La tua risposta</span>
+                                        </div>
+                                      )}
+
+                                      {question.type === "paragraph" && (
+                                        <div className="border border-muted-foreground/30 rounded p-3 w-full">
+                                          <span className="text-sm text-muted-foreground">La tua risposta</span>
+                                        </div>
+                                      )}
+
+                                      {question.type === "dropdown" && question.options && (
+                                        <div className="border border-muted-foreground/30 rounded px-3 py-2 w-full max-w-md flex items-center justify-between">
+                                          <span className="text-sm text-muted-foreground">Scegli</span>
+                                          <span className="text-muted-foreground">▼</span>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                                 
-                                 {showingFeedback?.sectionIndex === sectionIndex && 
-                                 showingFeedback?.questionIndex === questionIndex && (
+                                {showingFeedback?.sectionIndex === sectionIndex && 
+                                showingFeedback?.questionIndex === questionIndex && (
                                   <div className="ml-11 bg-muted/50 p-4 rounded-lg space-y-3">
                                     <label className="text-sm font-medium">{t("feedbackLabel")}</label>
                                     <Textarea
