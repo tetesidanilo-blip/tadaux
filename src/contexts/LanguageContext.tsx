@@ -85,6 +85,8 @@ const translations = {
     feedbackHelp: "This feedback helps you understand how questions should be modified and can be used as a model for other questions.",
     feedbackSaved: "Feedback saved",
     feedbackSavedDesc: "Your feedback has been saved for this question",
+    generateMore: "Generate more questions",
+    newQuestionsAdded: "new questions added to this section",
   },
   it: {
     // Hero
@@ -162,6 +164,8 @@ const translations = {
     feedbackHelp: "Questo feedback ti aiuta a capire come le domande dovrebbero essere modificate e può essere usato come modello per altre domande.",
     feedbackSaved: "Feedback salvato",
     feedbackSavedDesc: "Il tuo feedback è stato salvato per questa domanda",
+    generateMore: "Genera altre domande",
+    newQuestionsAdded: "nuove domande aggiunte a questa sezione",
   }
 };
 

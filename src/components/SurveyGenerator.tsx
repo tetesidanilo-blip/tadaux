@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, FileText, Edit2, Trash2, Check, X, Languages, MessageSquare } from "lucide-react";
+import { Loader2, Upload, FileText, Edit2, Trash2, Check, X, Languages, MessageSquare, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -31,6 +31,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const [description, setDescription] = useState("");
   const [sectionName, setSectionName] = useState("");
   const [language, setLanguage] = useState("it");
+  const [generatingMore, setGeneratingMore] = useState<number | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [sections, setSections] = useState<Section[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -251,6 +252,48 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     });
 
     cancelEditing();
+  };
+
+  const generateMoreQuestions = async (sectionIndex: number) => {
+    const section = sections[sectionIndex];
+    
+    setGeneratingMore(sectionIndex);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-survey", {
+        body: { 
+          description: `Generate additional questions similar to the existing ones in section "${section.name}". Existing questions: ${section.questions.map(q => q.question).join(", ")}`,
+          hasDocument: false,
+          language 
+        },
+      });
+
+      if (error) throw error;
+
+      const newQuestions = data.questions.map((q: Question) => ({
+        ...q,
+        section: section.name
+      }));
+
+      setSections(prev => prev.map((s, idx) => 
+        idx === sectionIndex 
+          ? { ...s, questions: [...s.questions, ...newQuestions] }
+          : s
+      ));
+
+      toast({
+        title: t("questionsAdded"),
+        description: `${newQuestions.length} ${t("newQuestionsAdded")}`,
+      });
+    } catch (error) {
+      console.error("Error generating more questions:", error);
+      toast({
+        title: t("generationFailed"),
+        description: t("failedToGenerate"),
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingMore(null);
+    }
   };
 
   const deleteQuestion = (sectionIndex: number, questionIndex: number) => {
@@ -670,6 +713,28 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                           </Card>
                         );
                       })}
+                      
+                      <div className="mt-4 pt-4 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => generateMoreQuestions(sectionIndex)}
+                          disabled={generatingMore === sectionIndex}
+                          className="w-full"
+                        >
+                          {generatingMore === sectionIndex ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              {t("generating")}
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-4 h-4 mr-2" />
+                              {t("generateMore")}
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
