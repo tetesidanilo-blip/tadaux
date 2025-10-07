@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, FileText, Edit2, Trash2, Check, X, Languages } from "lucide-react";
+import { Loader2, Upload, FileText, Edit2, Trash2, Check, X, Languages, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -14,6 +14,7 @@ interface Question {
   options?: string[];
   required: boolean;
   section?: string;
+  feedback?: string;
 }
 
 interface Section {
@@ -35,6 +36,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<{ sectionIndex: number; questionIndex: number } | null>(null);
   const [editedQuestion, setEditedQuestion] = useState<Question | null>(null);
+  const [showingFeedback, setShowingFeedback] = useState<{ sectionIndex: number; questionIndex: number } | null>(null);
   const { toast } = useToast();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -286,6 +288,33 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     setEditedQuestion({
       ...editedQuestion,
       options: editedQuestion.options?.filter((_, i) => i !== index)
+    });
+  };
+
+  const toggleFeedback = (sectionIndex: number, questionIndex: number) => {
+    if (showingFeedback?.sectionIndex === sectionIndex && showingFeedback?.questionIndex === questionIndex) {
+      setShowingFeedback(null);
+    } else {
+      setShowingFeedback({ sectionIndex, questionIndex });
+    }
+  };
+
+  const saveFeedback = (sectionIndex: number, questionIndex: number, feedback: string) => {
+    setSections(prev => prev.map((section, sIdx) => {
+      if (sIdx === sectionIndex) {
+        return {
+          ...section,
+          questions: section.questions.map((q, qIdx) => 
+            qIdx === questionIndex ? { ...q, feedback } : q
+          )
+        };
+      }
+      return section;
+    }));
+
+    toast({
+      title: t("feedbackSaved"),
+      description: t("feedbackSavedDesc"),
     });
   };
 
@@ -567,49 +596,75 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                                 </div>
                               </div>
                             ) : (
-                              <div className="flex gap-3">
-                                <span className="text-2xl">{getQuestionIcon(question.type)}</span>
-                                <div className="flex-1">
-                                  <div className="flex items-start justify-between mb-2">
-                                    <h5 className="font-semibold text-lg">
-                                      {questionIndex + 1}. {question.question}
-                                    </h5>
-                                    <div className="flex gap-2 items-center">
-                                      {question.required && (
-                                        <span className="text-xs bg-destructive/10 text-destructive px-2 py-1 rounded">
-                                          Obbligatorio
-                                        </span>
-                                      )}
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => startEditingQuestion(sectionIndex, questionIndex)}
-                                      >
-                                        <Edit2 className="w-4 h-4" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => deleteQuestion(sectionIndex, questionIndex)}
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </Button>
+                              <div className="space-y-3">
+                                <div className="flex gap-3">
+                                  <span className="text-2xl">{getQuestionIcon(question.type)}</span>
+                                  <div className="flex-1">
+                                    <div className="flex items-start justify-between mb-2">
+                                      <h5 className="font-semibold text-lg">
+                                        {questionIndex + 1}. {question.question}
+                                      </h5>
+                                      <div className="flex gap-2 items-center">
+                                        {question.required && (
+                                          <span className="text-xs bg-destructive/10 text-destructive px-2 py-1 rounded">
+                                            Obbligatorio
+                                          </span>
+                                        )}
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => toggleFeedback(sectionIndex, questionIndex)}
+                                          className={question.feedback ? "text-primary" : ""}
+                                        >
+                                          <MessageSquare className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => startEditingQuestion(sectionIndex, questionIndex)}
+                                        >
+                                          <Edit2 className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => deleteQuestion(sectionIndex, questionIndex)}
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                      </div>
                                     </div>
+                                    <p className="text-sm text-muted-foreground capitalize mb-2">
+                                      Tipo: {question.type.replace("_", " ")}
+                                    </p>
+                                    {question.options && question.options.length > 0 && (
+                                      <div className="mt-3 space-y-1">
+                                        <p className="text-sm font-medium">Opzioni:</p>
+                                        <ul className="list-disc list-inside text-sm text-muted-foreground">
+                                          {question.options.map((option, i) => (
+                                            <li key={i}>{option}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
                                   </div>
-                                  <p className="text-sm text-muted-foreground capitalize mb-2">
-                                    Tipo: {question.type.replace("_", " ")}
-                                  </p>
-                                  {question.options && question.options.length > 0 && (
-                                    <div className="mt-3 space-y-1">
-                                      <p className="text-sm font-medium">Opzioni:</p>
-                                      <ul className="list-disc list-inside text-sm text-muted-foreground">
-                                        {question.options.map((option, i) => (
-                                          <li key={i}>{option}</li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  )}
                                 </div>
+                                
+                                {showingFeedback?.sectionIndex === sectionIndex && 
+                                 showingFeedback?.questionIndex === questionIndex && (
+                                  <div className="ml-11 bg-muted/50 p-4 rounded-lg space-y-2">
+                                    <label className="text-sm font-medium">{t("feedbackLabel")}</label>
+                                    <Textarea
+                                      placeholder={t("feedbackPlaceholder")}
+                                      defaultValue={question.feedback || ""}
+                                      onBlur={(e) => saveFeedback(sectionIndex, questionIndex, e.target.value)}
+                                      className="min-h-20"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                      {t("feedbackHelp")}
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </Card>

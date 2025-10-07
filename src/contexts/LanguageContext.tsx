@@ -80,6 +80,11 @@ const translations = {
     changesSaved: "Changes have been saved",
     questionDeleted: "Question deleted",
     questionRemoved: "Question has been removed",
+    feedbackLabel: "Feedback for this question",
+    feedbackPlaceholder: "Example: Make this question more specific, add more options, change the wording...",
+    feedbackHelp: "This feedback helps you understand how questions should be modified and can be used as a model for other questions.",
+    feedbackSaved: "Feedback saved",
+    feedbackSavedDesc: "Your feedback has been saved for this question",
   },
   it: {
     // Hero
@@ -152,6 +157,11 @@ const translations = {
     changesSaved: "Le modifiche sono state salvate",
     questionDeleted: "Domanda eliminata",
     questionRemoved: "La domanda è stata rimossa",
+    feedbackLabel: "Feedback per questa domanda",
+    feedbackPlaceholder: "Esempio: Rendi questa domanda più specifica, aggiungi più opzioni, cambia la formulazione...",
+    feedbackHelp: "Questo feedback ti aiuta a capire come le domande dovrebbero essere modificate e può essere usato come modello per altre domande.",
+    feedbackSaved: "Feedback salvato",
+    feedbackSavedDesc: "Il tuo feedback è stato salvato per questa domanda",
   }
 };
 
