@@ -51,12 +51,19 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     if (file) {
       if (file.type === "application/pdf" || 
           file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-          file.type === "application/msword") {
-        setUploadedFile(file);
-        toast({
-          title: t("fileUploaded"),
-          description: `${file.name} ${t("fileReady")}`,
-        });
+          file.type === "application/msword" ||
+          file.type === "text/csv") {
+        
+        // Se è un CSV, lo processiamo immediatamente
+        if (file.type === "text/csv") {
+          handleCSVImport(file);
+        } else {
+          setUploadedFile(file);
+          toast({
+            title: t("fileUploaded"),
+            description: `${file.name} ${t("fileReady")}`,
+          });
+        }
       } else {
         toast({
           title: t("invalidFileType"),
@@ -64,6 +71,103 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
           variant: "destructive",
         });
       }
+    }
+  };
+
+  const handleCSVImport = async (file: File) => {
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        toast({
+          title: t("invalidCSV"),
+          description: t("csvMustHaveData"),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Parsa l'header
+      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+      const sectionIndex = headers.indexOf('Section');
+      const questionIndex = headers.indexOf('Question');
+      const typeIndex = headers.indexOf('Type');
+      const requiredIndex = headers.indexOf('Required');
+      const optionStartIndex = headers.findIndex(h => h.startsWith('Option'));
+
+      if (sectionIndex === -1 || questionIndex === -1 || typeIndex === -1) {
+        toast({
+          title: t("invalidCSVFormat"),
+          description: t("csvMissingColumns"),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Raggruppa domande per sezione
+      const sectionMap = new Map<string, Question[]>();
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.replace(/^"|"$/g, '').trim());
+        
+        const sectionName = values[sectionIndex] || "Sezione Importata";
+        const questionText = values[questionIndex];
+        const typeText = values[typeIndex];
+        const required = values[requiredIndex]?.toLowerCase() === 'yes';
+
+        // Mappa il tipo da Google Forms al nostro formato
+        let type = "short_answer";
+        if (typeText.toLowerCase().includes("multiple choice")) type = "multiple_choice";
+        else if (typeText.toLowerCase().includes("checkbox")) type = "checkbox";
+        else if (typeText.toLowerCase().includes("paragraph")) type = "paragraph";
+        else if (typeText.toLowerCase().includes("dropdown")) type = "dropdown";
+        else if (typeText.toLowerCase().includes("short answer")) type = "short_answer";
+
+        // Estrai le opzioni
+        const options: string[] = [];
+        if (optionStartIndex !== -1) {
+          for (let j = optionStartIndex; j < values.length; j++) {
+            if (values[j] && values[j].trim()) {
+              options.push(values[j]);
+            }
+          }
+        }
+
+        const question: Question = {
+          question: questionText,
+          type,
+          options: options.length > 0 ? options : undefined,
+          required,
+          section: sectionName
+        };
+
+        if (!sectionMap.has(sectionName)) {
+          sectionMap.set(sectionName, []);
+        }
+        sectionMap.get(sectionName)!.push(question);
+      }
+
+      // Converti la mappa in array di sezioni
+      const importedSections: Section[] = Array.from(sectionMap.entries()).map(([name, questions]) => ({
+        name,
+        questions
+      }));
+
+      setSections(prev => [...prev, ...importedSections]);
+
+      const totalQuestions = importedSections.reduce((sum, s) => sum + s.questions.length, 0);
+      toast({
+        title: t("csvImported"),
+        description: `${importedSections.length} ${t("sections")} e ${totalQuestions} ${t("totalQuestions")} ${t("imported")}`,
+      });
+    } catch (error) {
+      console.error("Error importing CSV:", error);
+      toast({
+        title: t("importFailed"),
+        description: t("failedToImportCSV"),
+        variant: "destructive",
+      });
     }
   };
 
@@ -667,12 +771,12 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                 <input
                   id="file-upload"
                   type="file"
-                  accept=".pdf,.doc,.docx"
+                  accept=".pdf,.doc,.docx,.csv"
                   className="hidden"
                   onChange={handleFileUpload}
                 />
                 <p className="text-xs text-muted-foreground mt-2">
-                  {t("supportsFiles")}
+                  {t("supportsFiles")} (PDF, Word, CSV)
                 </p>
               </div>
 
