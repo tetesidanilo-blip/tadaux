@@ -869,15 +869,15 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                                         return section;
                                       }));
                                     }}
-                                    className="text-2xl bg-transparent border-none cursor-pointer hover:bg-muted/50 rounded px-1 transition-colors"
+                                    className="text-xl bg-background border border-input rounded px-2 py-1 cursor-pointer hover:bg-muted/50 transition-colors z-50"
                                     title="Cambia tipo di domanda"
                                     disabled={feedbackMode === 'multiple'}
                                   >
-                                    <option value="multiple_choice">○</option>
-                                    <option value="checkbox">☐</option>
-                                    <option value="short_answer">___</option>
-                                    <option value="paragraph">¶</option>
-                                    <option value="dropdown">▼</option>
+                                    <option value="multiple_choice">○ Scelta multipla</option>
+                                    <option value="checkbox">☐ Caselle di controllo</option>
+                                    <option value="short_answer">___ Risposta breve</option>
+                                    <option value="paragraph">¶ Paragrafo</option>
+                                    <option value="dropdown">▼ Menu a tendina</option>
                                   </select>
                                   <div className="flex-1">
                                     <div className="flex items-start justify-between mb-2">
