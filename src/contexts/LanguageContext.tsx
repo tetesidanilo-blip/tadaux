@@ -108,6 +108,10 @@ const translations = {
     noFeedbackDesc: "Please add feedback before applying",
     questionsUpdated: "questions updated",
     sourceQuestion: "Source",
+    addSectionManually: "Add New Section",
+    newSectionName: "New Section Name",
+    addSection: "Add Section",
+    hasBeenCreated: "has been created",
   },
   it: {
     // Hero
@@ -208,6 +212,10 @@ const translations = {
     noFeedbackDesc: "Aggiungi un feedback prima di applicarlo",
     questionsUpdated: "domande aggiornate",
     sourceQuestion: "Sorgente",
+    addSectionManually: "Aggiungi Nuova Sezione",
+    newSectionName: "Nome Nuova Sezione",
+    addSection: "Aggiungi Sezione",
+    hasBeenCreated: "è stata creata",
   }
 };
 

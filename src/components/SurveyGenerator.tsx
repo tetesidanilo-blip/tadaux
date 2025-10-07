@@ -44,6 +44,8 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const [applyingFeedback, setApplyingFeedback] = useState(false);
   const [feedbackMode, setFeedbackMode] = useState<'single' | 'multiple' | null>(null);
   const [sourceFeedback, setSourceFeedback] = useState<{ sectionIndex: number; questionIndex: number; feedback: string } | null>(null);
+  const [addingSectionManually, setAddingSectionManually] = useState(false);
+  const [newSectionName, setNewSectionName] = useState("");
   const { toast } = useToast();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -649,6 +651,30 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     }
   };
 
+  const addManualSection = () => {
+    if (!newSectionName.trim()) {
+      toast({
+        title: t("sectionNameRequired"),
+        description: t("provideSectionName"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSections(prev => [...prev, {
+      name: newSectionName,
+      questions: []
+    }]);
+
+    setNewSectionName("");
+    setAddingSectionManually(false);
+
+    toast({
+      title: t("sectionAdded"),
+      description: `"${newSectionName}" ${t("hasBeenCreated")}`,
+    });
+  };
+
   return (
     <div className="min-h-screen py-12 px-4">
       <div className="container max-w-4xl mx-auto">
@@ -1115,8 +1141,8 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                                               <div className="w-4 h-4 rounded-full border-2 border-muted-foreground" />
                                               <span className="text-sm">{option}</span>
                                             </div>
-                                          ))}
-                                        </div>
+                  ))}
+                 </div>
                                       )}
 
                                       {question.type === "checkbox" && question.options && (
@@ -1222,6 +1248,60 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                     </div>
                   ))}
                  </div>
+
+                {/* Pulsante per aggiungere manualmente una nuova sezione */}
+                <div className="mt-6 pt-6 border-t">
+                  {addingSectionManually ? (
+                    <Card className="p-4 space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          {t("newSectionName")}
+                        </label>
+                        <Input
+                          placeholder={t("sectionNamePlaceholder")}
+                          value={newSectionName}
+                          onChange={(e) => setNewSectionName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              addManualSection();
+                            }
+                          }}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={addManualSection}
+                        >
+                          <Check className="w-4 h-4 mr-2" />
+                          {t("addSection")}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setAddingSectionManually(false);
+                            setNewSectionName("");
+                          }}
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          {t("cancel")}
+                        </Button>
+                      </div>
+                    </Card>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setAddingSectionManually(true)}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {t("addSectionManually")}
+                    </Button>
+                  )}
+                </div>
 
                 <div className="bg-muted/50 p-4 rounded-lg">
                   <div className="flex gap-2 items-start">
