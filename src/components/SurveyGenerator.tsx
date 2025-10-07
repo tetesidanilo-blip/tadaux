@@ -852,7 +852,33 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                                   {feedbackMode === 'multiple' && isSourceQuestion && (
                                     <div className="w-6 h-6 mt-1 flex-shrink-0" />
                                   )}
-                                  <span className="text-2xl">{getQuestionIcon(question.type)}</span>
+                                  <select
+                                    value={question.type}
+                                    onChange={(e) => {
+                                      setSections(prev => prev.map((section, sIdx) => {
+                                        if (sIdx === sectionIndex) {
+                                          return {
+                                            ...section,
+                                            questions: section.questions.map((q, qIdx) => 
+                                              qIdx === questionIndex 
+                                                ? { ...q, type: e.target.value, options: e.target.value === 'short_answer' || e.target.value === 'paragraph' ? undefined : q.options || ['Opzione 1', 'Opzione 2'] }
+                                                : q
+                                            )
+                                          };
+                                        }
+                                        return section;
+                                      }));
+                                    }}
+                                    className="text-2xl bg-transparent border-none cursor-pointer hover:bg-muted/50 rounded px-1 transition-colors"
+                                    title="Cambia tipo di domanda"
+                                    disabled={feedbackMode === 'multiple'}
+                                  >
+                                    <option value="multiple_choice">○</option>
+                                    <option value="checkbox">☐</option>
+                                    <option value="short_answer">___</option>
+                                    <option value="paragraph">¶</option>
+                                    <option value="dropdown">▼</option>
+                                  </select>
                                   <div className="flex-1">
                                     <div className="flex items-start justify-between mb-2">
                                       <h5 className="font-semibold text-lg">
