@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Upload, FileText, Edit2, Trash2, Check, X, Languages, MessageSquare, Plus, CheckCircle2, Circle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -46,6 +47,11 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const [sourceFeedback, setSourceFeedback] = useState<{ sectionIndex: number; questionIndex: number; feedback: string } | null>(null);
   const [addingSectionManually, setAddingSectionManually] = useState(false);
   const [newSectionName, setNewSectionName] = useState("");
+  const [addingSectionDialog, setAddingSectionDialog] = useState(false);
+  const [newSectionTitle, setNewSectionTitle] = useState("");
+  const [newSectionDescription, setNewSectionDescription] = useState("");
+  const [newSectionLanguage, setNewSectionLanguage] = useState("it");
+  const [generatingNewSection, setGeneratingNewSection] = useState(false);
   const { toast } = useToast();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -675,6 +681,68 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     });
   };
 
+  const generateNewSection = async () => {
+    if (!newSectionTitle.trim()) {
+      toast({
+        title: t("sectionNameRequired"),
+        description: t("provideSectionName"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!newSectionDescription.trim()) {
+      toast({
+        title: t("inputRequired"),
+        description: t("provideDescription"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGeneratingNewSection(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-survey", {
+        body: { 
+          description: newSectionDescription,
+          hasDocument: false,
+          language: newSectionLanguage 
+        },
+      });
+
+      if (error) throw error;
+
+      const newQuestions = data.questions.map((q: Question) => ({
+        ...q,
+        section: newSectionTitle
+      }));
+
+      setSections(prev => [...prev, {
+        name: newSectionTitle,
+        questions: newQuestions
+      }]);
+
+      setNewSectionTitle("");
+      setNewSectionDescription("");
+      setNewSectionLanguage("it");
+      setAddingSectionDialog(false);
+
+      toast({
+        title: t("sectionAdded"),
+        description: `${newQuestions.length} ${t("questionsAdded")} "${newSectionTitle}"`,
+      });
+    } catch (error) {
+      console.error("Error generating new section:", error);
+      toast({
+        title: t("generationFailed"),
+        description: t("failedToGenerate"),
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingNewSection(false);
+    }
+  };
+
   return (
     <div className="min-h-screen py-12 px-4">
       <div className="container max-w-4xl mx-auto">
@@ -1249,58 +1317,16 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                   ))}
                  </div>
 
-                {/* Pulsante per aggiungere manualmente una nuova sezione */}
+                {/* Pulsante per aggiungere una nuova sezione con AI */}
                 <div className="mt-6 pt-6 border-t">
-                  {addingSectionManually ? (
-                    <Card className="p-4 space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          {t("newSectionName")}
-                        </label>
-                        <Input
-                          placeholder={t("sectionNamePlaceholder")}
-                          value={newSectionName}
-                          onChange={(e) => setNewSectionName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              addManualSection();
-                            }
-                          }}
-                          autoFocus
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={addManualSection}
-                        >
-                          <Check className="w-4 h-4 mr-2" />
-                          {t("addSection")}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setAddingSectionManually(false);
-                            setNewSectionName("");
-                          }}
-                        >
-                          <X className="w-4 h-4 mr-2" />
-                          {t("cancel")}
-                        </Button>
-                      </div>
-                    </Card>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => setAddingSectionManually(true)}
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      {t("addSectionManually")}
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setAddingSectionDialog(true)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    {t("addNewSection")}
+                  </Button>
                 </div>
 
                 <div className="bg-muted/50 p-4 rounded-lg">
@@ -1359,7 +1385,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     {t("applyingFeedback")}
                   </>
-                ) : (
+                 ) : (
                   t("applyFeedback")
                 )}
               </Button>
@@ -1367,6 +1393,100 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
           </div>
         </div>
       )}
+
+      {/* Dialog per aggiungere nuova sezione con AI */}
+      <Dialog open={addingSectionDialog} onOpenChange={setAddingSectionDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("addNewSection")}</DialogTitle>
+            <DialogDescription>
+              {t("newSectionDialogDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                {t("surveyLanguage")} *
+              </label>
+              <select
+                value={newSectionLanguage}
+                onChange={(e) => setNewSectionLanguage(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2"
+                disabled={generatingNewSection}
+              >
+                <option value="it">Italiano</option>
+                <option value="en">English</option>
+                <option value="es">Español</option>
+                <option value="fr">Français</option>
+                <option value="de">Deutsch</option>
+                <option value="pt">Português</option>
+                <option value="nl">Nederlands</option>
+                <option value="pl">Polski</option>
+                <option value="ru">Русский</option>
+                <option value="zh">中文</option>
+                <option value="ja">日本語</option>
+                <option value="ko">한국어</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                {t("sectionName")} *
+              </label>
+              <Input
+                placeholder={t("sectionNamePlaceholder")}
+                value={newSectionTitle}
+                onChange={(e) => setNewSectionTitle(e.target.value)}
+                disabled={generatingNewSection}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                {t("questionDescription")} *
+              </label>
+              <Textarea
+                placeholder={t("questionDescriptionPlaceholder")}
+                value={newSectionDescription}
+                onChange={(e) => setNewSectionDescription(e.target.value)}
+                className="min-h-24"
+                disabled={generatingNewSection}
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setAddingSectionDialog(false);
+                  setNewSectionTitle("");
+                  setNewSectionDescription("");
+                  setNewSectionLanguage("it");
+                }}
+                disabled={generatingNewSection}
+              >
+                {t("cancel")}
+              </Button>
+              <Button
+                onClick={generateNewSection}
+                disabled={generatingNewSection}
+              >
+                {generatingNewSection ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {t("generating")}
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    {t("generateSection")}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

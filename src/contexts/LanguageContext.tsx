@@ -108,10 +108,11 @@ const translations = {
     noFeedbackDesc: "Please add feedback before applying",
     questionsUpdated: "questions updated",
     sourceQuestion: "Source",
-    addSectionManually: "Add New Section",
     newSectionName: "New Section Name",
     addSection: "Add Section",
     hasBeenCreated: "has been created",
+    newSectionDialogDesc: "Generate a new section with AI by providing a title and topic.",
+    generateSection: "Generate Section",
   },
   it: {
     // Hero
@@ -212,10 +213,11 @@ const translations = {
     noFeedbackDesc: "Aggiungi un feedback prima di applicarlo",
     questionsUpdated: "domande aggiornate",
     sourceQuestion: "Sorgente",
-    addSectionManually: "Aggiungi Nuova Sezione",
     newSectionName: "Nome Nuova Sezione",
     addSection: "Aggiungi Sezione",
     hasBeenCreated: "è stata creata",
+    newSectionDialogDesc: "Genera una nuova sezione con l'AI fornendo un titolo e un argomento.",
+    generateSection: "Genera Sezione",
   }
 };
 
