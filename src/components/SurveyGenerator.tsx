@@ -808,11 +808,10 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                 <label className="block text-sm font-medium mb-2">
                   {t("sectionName")} *
                 </label>
-                <Textarea
+                <Input
                   placeholder={t("sectionNamePlaceholder")}
                   value={sectionName}
                   onChange={(e) => setSectionName(e.target.value)}
-                  className="min-h-20"
                   disabled={isGenerating}
                 />
               </div>
