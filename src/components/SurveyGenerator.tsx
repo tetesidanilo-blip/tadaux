@@ -1342,13 +1342,24 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                 </div>
 
                 <div className="flex justify-center mt-6">
-                  <Button
-                    onClick={exportToCSV}
-                    size="lg"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    {t("downloadCSV")}
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="lg">
+                        <Download className="w-4 h-4 mr-2" />
+                        {t("downloadCSV")}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="bg-background">
+                      <DropdownMenuItem onClick={exportToCSV}>
+                        <FileText className="w-4 h-4 mr-2" />
+                        CSV
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={exportToCSV}>
+                        <Download className="w-4 h-4 mr-2" />
+                        Google Forms (CSV)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </Card>
