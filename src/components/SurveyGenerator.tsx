@@ -323,98 +323,151 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     });
   };
 
-  const exportToGoogleForms = () => {
-    // Map question types to Google Forms JSON format
-    const mapQuestionTypeToGoogleForms = (type: string) => {
-      switch (type) {
-        case "multiple_choice":
-          return "RADIO";
-        case "checkbox":
-          return "CHECKBOX";
-        case "short_answer":
-          return "SHORT_ANSWER";
-        case "paragraph":
-          return "PARAGRAPH";
-        case "dropdown":
-          return "DROP_DOWN";
-        default:
-          return "SHORT_ANSWER";
-      }
-    };
-
-    // Build Google Forms JSON structure
-    const formItems: any[] = [];
+  const exportToWord = () => {
+    let content = `QUESTIONARIO GENERATO\n\n`;
     
-    sections.forEach((section) => {
-      // Add section header
-      if (section.name) {
-        formItems.push({
-          title: section.name,
-          description: "",
-          itemType: "PAGE_BREAK"
-        });
-      }
-
-      // Add questions from this section
-      section.questions.forEach((q) => {
-        const questionType = mapQuestionTypeToGoogleForms(q.type);
-        const item: any = {
-          title: q.question,
-          itemType: "QUESTION"
+    sections.forEach((section, sectionIndex) => {
+      content += `${'='.repeat(50)}\n`;
+      content += `SEZIONE: ${section.name}\n`;
+      content += `${'='.repeat(50)}\n\n`;
+      
+      section.questions.forEach((q, qIndex) => {
+        const questionNumber = sectionIndex * 100 + qIndex + 1;
+        content += `${questionNumber}. ${q.question}`;
+        
+        // Add question type
+        const typeLabels: { [key: string]: string } = {
+          'short_answer': 'Risposta breve',
+          'paragraph': 'Paragrafo',
+          'multiple_choice': 'Scelta multipla',
+          'checkbox': 'Checkbox',
+          'dropdown': 'Menu a tendina'
         };
-
-        // Build question object based on type
-        if (questionType === "SHORT_ANSWER" || questionType === "PARAGRAPH") {
-          item.questionItem = {
-            question: {
-              required: q.required,
-              textQuestion: {
-                paragraph: questionType === "PARAGRAPH"
-              }
-            }
-          };
-        } else if (questionType === "RADIO" || questionType === "CHECKBOX" || questionType === "DROP_DOWN") {
-          item.questionItem = {
-            question: {
-              required: q.required,
-              choiceQuestion: {
-                type: questionType,
-                options: (q.options || []).map(opt => ({
-                  value: opt
-                }))
-              }
-            }
-          };
+        content += ` (${typeLabels[q.type] || q.type})`;
+        
+        if (q.required) {
+          content += ` *OBBLIGATORIA`;
         }
-
-        formItems.push(item);
+        content += `\n`;
+        
+        // Add options if present
+        if (q.options && q.options.length > 0) {
+          q.options.forEach((opt) => {
+            const symbol = q.type === 'checkbox' ? '☐' : '○';
+            content += `   ${symbol} ${opt}\n`;
+          });
+        }
+        content += `\n`;
       });
+      content += `\n`;
     });
-
-    const googleFormData = {
-      info: {
-        title: "Generated Survey",
-        documentTitle: "Survey"
-      },
-      items: formItems
-    };
-
-    // Create and download JSON file
-    const json = JSON.stringify(googleFormData, null, 2);
-    const blob = new Blob([json], { type: "application/json;charset=utf-8;" });
+    
+    // Create and download DOC file
+    const blob = new Blob([content], { type: "application/msword;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", "survey.form.json");
+    link.setAttribute("download", "survey.doc");
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
+    
     toast({
-      title: "Google Forms JSON esportato",
-      description: "Il file JSON può essere importato direttamente in Google Forms",
+      title: t("exportSuccess") || "Export completato",
+      description: "Documento Word scaricato con successo",
     });
+  };
+
+  const exportToPDF = async () => {
+    try {
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF();
+      
+      let yPosition = 20;
+      const pageHeight = doc.internal.pageSize.height;
+      const margin = 20;
+      
+      // Title
+      doc.setFontSize(16);
+      doc.setFont(undefined, 'bold');
+      doc.text('QUESTIONARIO GENERATO', margin, yPosition);
+      yPosition += 15;
+      
+      sections.forEach((section, sectionIndex) => {
+        // Check if we need a new page
+        if (yPosition > pageHeight - 40) {
+          doc.addPage();
+          yPosition = 20;
+        }
+        
+        // Section title
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text(`SEZIONE: ${section.name}`, margin, yPosition);
+        yPosition += 10;
+        
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        
+        section.questions.forEach((q, qIndex) => {
+          const questionNumber = sectionIndex * 100 + qIndex + 1;
+          
+          // Check if we need a new page
+          if (yPosition > pageHeight - 60) {
+            doc.addPage();
+            yPosition = 20;
+          }
+          
+          // Question text
+          const typeLabels: { [key: string]: string } = {
+            'short_answer': 'Risposta breve',
+            'paragraph': 'Paragrafo',
+            'multiple_choice': 'Scelta multipla',
+            'checkbox': 'Checkbox',
+            'dropdown': 'Menu a tendina'
+          };
+          
+          const questionText = `${questionNumber}. ${q.question} (${typeLabels[q.type] || q.type})${q.required ? ' *OBB.' : ''}`;
+          const lines = doc.splitTextToSize(questionText, 170);
+          doc.text(lines, margin, yPosition);
+          yPosition += lines.length * 5 + 3;
+          
+          // Options
+          if (q.options && q.options.length > 0) {
+            q.options.forEach((opt) => {
+              if (yPosition > pageHeight - 20) {
+                doc.addPage();
+                yPosition = 20;
+              }
+              const symbol = q.type === 'checkbox' ? '☐' : '○';
+              const optionLines = doc.splitTextToSize(`   ${symbol} ${opt}`, 165);
+              doc.text(optionLines, margin + 5, yPosition);
+              yPosition += optionLines.length * 5;
+            });
+          }
+          
+          yPosition += 5;
+        });
+        
+        yPosition += 5;
+      });
+      
+      // Save PDF
+      doc.save('survey.pdf');
+      
+      toast({
+        title: t("exportSuccess") || "Export completato",
+        description: "PDF scaricato con successo",
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile generare il PDF",
+        variant: "destructive",
+      });
+    }
   };
 
   const removeSection = (sectionName: string) => {
@@ -1446,11 +1499,15 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                     <DropdownMenuContent className="bg-background">
                       <DropdownMenuItem onClick={exportToCSV}>
                         <FileText className="w-4 h-4 mr-2" />
-                        CSV
+                        CSV (Google Forms)
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={exportToGoogleForms}>
+                      <DropdownMenuItem onClick={exportToWord}>
+                        <FileText className="w-4 h-4 mr-2" />
+                        Word (.doc)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={exportToPDF}>
                         <Download className="w-4 h-4 mr-2" />
-                        Google Forms (JSON)
+                        PDF
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
