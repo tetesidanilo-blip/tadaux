@@ -55,7 +55,6 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const [showPreview, setShowPreview] = useState(false);
   const [showMoreQuestionsDialog, setShowMoreQuestionsDialog] = useState(false);
   const [currentSectionForMore, setCurrentSectionForMore] = useState<number | null>(null);
-  const [useNewModel, setUseNewModel] = useState(false);
   const [newModelDescription, setNewModelDescription] = useState("");
   const [editingSectionName, setEditingSectionName] = useState<number | null>(null);
   const [editedSectionName, setEditedSectionName] = useState("");
@@ -1600,16 +1599,11 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                         );
                       })}
                       
-                      <div className="mt-4 pt-4 border-t">
+                      <div className="mt-4 pt-4 border-t space-y-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            setCurrentSectionForMore(sectionIndex);
-                            setShowMoreQuestionsDialog(true);
-                            setUseNewModel(false);
-                            setNewModelDescription("");
-                          }}
+                          onClick={() => generateMoreQuestions(sectionIndex)}
                           disabled={generatingMore === sectionIndex}
                           className="w-full"
                         >
@@ -1621,9 +1615,23 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                           ) : (
                             <>
                               <Plus className="w-4 h-4 mr-2" />
-                              {t("generateMore")}
+                              Continua con modello precedente
                             </>
                           )}
+                        </Button>
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setCurrentSectionForMore(sectionIndex);
+                            setShowMoreQuestionsDialog(true);
+                          }}
+                          disabled={generatingMore === sectionIndex}
+                          className="w-full"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Nuovo modello/argomento
                         </Button>
                       </div>
                     </div>
@@ -1826,71 +1834,35 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog per generare più domande */}
+      {/* Dialog per nuovo modello */}
       <Dialog open={showMoreQuestionsDialog} onOpenChange={setShowMoreQuestionsDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Genera Altre Domande</DialogTitle>
+            <DialogTitle>Nuovo Modello/Argomento</DialogTitle>
             <DialogDescription>
-              Scegli se continuare con il modello precedente o creare domande su un nuovo modello
+              Inserisci le indicazioni per creare domande su un nuovo modello o argomento
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 mt-4">
-            <div className="space-y-4">
-              <label className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                <input
-                  type="radio"
-                  name="model-choice"
-                  checked={!useNewModel}
-                  onChange={() => setUseNewModel(false)}
-                  className="w-4 h-4"
-                />
-                <div className="flex-1">
-                  <p className="font-medium">Continua con il modello precedente</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Genera domande basate sulla descrizione o documento originale
-                  </p>
-                </div>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Descrivi il nuovo modello o argomento
               </label>
-
-              <label className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                <input
-                  type="radio"
-                  name="model-choice"
-                  checked={useNewModel}
-                  onChange={() => setUseNewModel(true)}
-                  className="w-4 h-4"
-                />
-                <div className="flex-1">
-                  <p className="font-medium">Nuovo modello/argomento</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Inserisci nuove indicazioni per creare domande su un diverso modello
-                  </p>
-                </div>
-              </label>
+              <Textarea
+                placeholder="Es: Crea domande sul modello di leadership trasformazionale, sui principi della fisica quantistica, etc..."
+                value={newModelDescription}
+                onChange={(e) => setNewModelDescription(e.target.value)}
+                className="min-h-32"
+                autoFocus
+              />
             </div>
-
-            {useNewModel && (
-              <div className="space-y-2 animate-in fade-in-50">
-                <label className="text-sm font-medium">
-                  Descrivi il nuovo modello o argomento
-                </label>
-                <Textarea
-                  placeholder="Es: Crea domande sul modello di leadership trasformazionale, sui principi della fisica quantistica, etc..."
-                  value={newModelDescription}
-                  onChange={(e) => setNewModelDescription(e.target.value)}
-                  className="min-h-32"
-                />
-              </div>
-            )}
 
             <div className="flex gap-3 justify-end">
               <Button
                 variant="outline"
                 onClick={() => {
                   setShowMoreQuestionsDialog(false);
-                  setUseNewModel(false);
                   setNewModelDescription("");
                 }}
               >
@@ -1898,7 +1870,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
               </Button>
               <Button
                 onClick={async () => {
-                  if (useNewModel && !newModelDescription.trim()) {
+                  if (!newModelDescription.trim()) {
                     toast({
                       title: "Descrizione richiesta",
                       description: "Inserisci una descrizione per il nuovo modello",
@@ -1910,19 +1882,12 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                   setShowMoreQuestionsDialog(false);
                   
                   if (currentSectionForMore !== null) {
-                    if (useNewModel) {
-                      // Usa la nuova descrizione
-                      await generateMoreQuestionsWithDescription(currentSectionForMore, newModelDescription);
-                    } else {
-                      // Usa il modello precedente
-                      await generateMoreQuestions(currentSectionForMore);
-                    }
+                    await generateMoreQuestionsWithDescription(currentSectionForMore, newModelDescription);
                   }
                   
-                  setUseNewModel(false);
                   setNewModelDescription("");
                 }}
-                disabled={useNewModel && !newModelDescription.trim()}
+                disabled={!newModelDescription.trim()}
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Genera Domande
