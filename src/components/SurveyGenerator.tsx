@@ -53,6 +53,10 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const [newSectionLanguage, setNewSectionLanguage] = useState("it");
   const [generatingNewSection, setGeneratingNewSection] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showMoreQuestionsDialog, setShowMoreQuestionsDialog] = useState(false);
+  const [currentSectionForMore, setCurrentSectionForMore] = useState<number | null>(null);
+  const [useNewModel, setUseNewModel] = useState(false);
+  const [newModelDescription, setNewModelDescription] = useState("");
   const { toast } = useToast();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -557,6 +561,48 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
       const { data, error } = await supabase.functions.invoke("generate-survey", {
         body: { 
           description: `Generate additional questions similar to the existing ones in section "${section.name}". Existing questions: ${section.questions.map(q => q.question).join(", ")}`,
+          hasDocument: false,
+          language 
+        },
+      });
+
+      if (error) throw error;
+
+      const newQuestions = data.questions.map((q: Question) => ({
+        ...q,
+        section: section.name
+      }));
+
+      setSections(prev => prev.map((s, idx) => 
+        idx === sectionIndex 
+          ? { ...s, questions: [...s.questions, ...newQuestions] }
+          : s
+      ));
+
+      toast({
+        title: t("questionsAdded"),
+        description: `${newQuestions.length} ${t("newQuestionsAdded")}`,
+      });
+    } catch (error) {
+      console.error("Error generating more questions:", error);
+      toast({
+        title: t("generationFailed"),
+        description: t("failedToGenerate"),
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingMore(null);
+    }
+  };
+
+  const generateMoreQuestionsWithDescription = async (sectionIndex: number, description: string) => {
+    const section = sections[sectionIndex];
+    
+    setGeneratingMore(sectionIndex);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-survey", {
+        body: { 
+          description: description,
           hasDocument: false,
           language 
         },
@@ -1495,7 +1541,12 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => generateMoreQuestions(sectionIndex)}
+                          onClick={() => {
+                            setCurrentSectionForMore(sectionIndex);
+                            setShowMoreQuestionsDialog(true);
+                            setUseNewModel(false);
+                            setNewModelDescription("");
+                          }}
                           disabled={generatingMore === sectionIndex}
                           className="w-full"
                         >
@@ -1712,120 +1763,115 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* Preview Dialog */}
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      {/* Dialog per generare più domande */}
+      <Dialog open={showMoreQuestionsDialog} onOpenChange={setShowMoreQuestionsDialog}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">Preview Questionario</DialogTitle>
+            <DialogTitle>Genera Altre Domande</DialogTitle>
             <DialogDescription>
-              Visualizza come apparirà il questionario una volta compilato
+              Scegli se continuare con il modello precedente o creare domande su un nuovo modello
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-8 mt-6">
-            {sections.map((section, sectionIndex) => (
-              <div key={sectionIndex} className="space-y-6">
-                <div className="border-b-2 border-primary pb-3">
-                  <h2 className="text-2xl font-bold text-primary">{section.name}</h2>
+
+          <div className="space-y-6 mt-4">
+            <div className="space-y-4">
+              <label className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                <input
+                  type="radio"
+                  name="model-choice"
+                  checked={!useNewModel}
+                  onChange={() => setUseNewModel(false)}
+                  className="w-4 h-4"
+                />
+                <div className="flex-1">
+                  <p className="font-medium">Continua con il modello precedente</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Genera domande basate sulla descrizione o documento originale
+                  </p>
                 </div>
-                
-                <div className="space-y-6">
-                  {section.questions.map((question, questionIndex) => {
-                    const questionNumber = sections
-                      .slice(0, sectionIndex)
-                      .reduce((sum, s) => sum + s.questions.length, 0) + questionIndex + 1;
-                    
-                    return (
-                      <div key={questionIndex} className="space-y-3 p-4 rounded-lg bg-muted/30">
-                        <div className="flex items-start gap-2">
-                          <span className="font-semibold text-foreground">
-                            {questionNumber}.
-                          </span>
-                          <div className="flex-1">
-                            <p className="font-medium text-foreground">
-                              {question.question}
-                              {question.required && (
-                                <span className="text-destructive ml-1">*</span>
-                              )}
-                            </p>
-                          </div>
-                        </div>
+              </label>
 
-                        <div className="ml-6 mt-3">
-                          {question.type === "multiple_choice" && question.options && (
-                            <div className="space-y-2">
-                              {question.options.map((option, idx) => (
-                                <label key={idx} className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 p-2 rounded transition-colors">
-                                  <input
-                                    type="radio"
-                                    name={`q-${sectionIndex}-${questionIndex}`}
-                                    className="w-4 h-4"
-                                    disabled
-                                  />
-                                  <span className="text-sm">{option}</span>
-                                </label>
-                              ))}
-                            </div>
-                          )}
-
-                          {question.type === "checkbox" && question.options && (
-                            <div className="space-y-2">
-                              {question.options.map((option, idx) => (
-                                <label key={idx} className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 p-2 rounded transition-colors">
-                                  <input
-                                    type="checkbox"
-                                    className="w-4 h-4"
-                                    disabled
-                                  />
-                                  <span className="text-sm">{option}</span>
-                                </label>
-                              ))}
-                            </div>
-                          )}
-
-                          {question.type === "dropdown" && question.options && (
-                            <select className="w-full md:w-2/3 px-3 py-2 border border-input rounded-md bg-background" disabled>
-                              <option value="">Seleziona un'opzione</option>
-                              {question.options.map((option, idx) => (
-                                <option key={idx} value={option}>{option}</option>
-                              ))}
-                            </select>
-                          )}
-
-                          {question.type === "short_answer" && (
-                            <Input
-                              placeholder="La tua risposta"
-                              className="w-full md:w-2/3"
-                              disabled
-                            />
-                          )}
-
-                          {question.type === "paragraph" && (
-                            <Textarea
-                              placeholder="La tua risposta"
-                              className="w-full min-h-24"
-                              disabled
-                            />
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+              <label className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                <input
+                  type="radio"
+                  name="model-choice"
+                  checked={useNewModel}
+                  onChange={() => setUseNewModel(true)}
+                  className="w-4 h-4"
+                />
+                <div className="flex-1">
+                  <p className="font-medium">Nuovo modello/argomento</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Inserisci nuove indicazioni per creare domande su un diverso modello
+                  </p>
                 </div>
+              </label>
+            </div>
+
+            {useNewModel && (
+              <div className="space-y-2 animate-in fade-in-50">
+                <label className="text-sm font-medium">
+                  Descrivi il nuovo modello o argomento
+                </label>
+                <Textarea
+                  placeholder="Es: Crea domande sul modello di leadership trasformazionale, sui principi della fisica quantistica, etc..."
+                  value={newModelDescription}
+                  onChange={(e) => setNewModelDescription(e.target.value)}
+                  className="min-h-32"
+                />
               </div>
-            ))}
+            )}
 
-            <div className="flex justify-center pt-6 pb-4 border-t">
+            <div className="flex gap-3 justify-end">
               <Button
-                size="lg"
-                className="px-8"
-                disabled
+                variant="outline"
+                onClick={() => {
+                  setShowMoreQuestionsDialog(false);
+                  setUseNewModel(false);
+                  setNewModelDescription("");
+                }}
               >
-                Invia
+                Annulla
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (useNewModel && !newModelDescription.trim()) {
+                    toast({
+                      title: "Descrizione richiesta",
+                      description: "Inserisci una descrizione per il nuovo modello",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  
+                  setShowMoreQuestionsDialog(false);
+                  
+                  if (currentSectionForMore !== null) {
+                    if (useNewModel) {
+                      // Usa la nuova descrizione
+                      await generateMoreQuestionsWithDescription(currentSectionForMore, newModelDescription);
+                    } else {
+                      // Usa il modello precedente
+                      await generateMoreQuestions(currentSectionForMore);
+                    }
+                  }
+                  
+                  setUseNewModel(false);
+                  setNewModelDescription("");
+                }}
+                disabled={useNewModel && !newModelDescription.trim()}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Genera Domande
               </Button>
             </div>
           </div>
         </DialogContent>
+      </Dialog>
+
+      {/* Preview Dialog */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+...
       </Dialog>
     </div>
   );
