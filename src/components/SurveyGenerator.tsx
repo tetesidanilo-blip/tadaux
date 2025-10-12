@@ -402,10 +402,10 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
       const maxWidth = 170;
       
       // Title
-      doc.setFontSize(16);
+      doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
       doc.text('QUESTIONARIO GENERATO', margin, yPosition);
-      yPosition += 15;
+      yPosition += 20;
       
       sections.forEach((section, sectionIndex) => {
         // Check if we need a new page
@@ -415,16 +415,16 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
         }
         
         // Section title
-        doc.setFontSize(14);
+        doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
         const sectionLines = doc.splitTextToSize(`SEZIONE: ${section.name}`, maxWidth);
         sectionLines.forEach((line: string) => {
           doc.text(line, margin, yPosition);
           yPosition += 7;
         });
-        yPosition += 3;
+        yPosition += 8;
         
-        doc.setFontSize(10);
+        doc.setFontSize(12);
         doc.setFont('helvetica', 'normal');
         
         section.questions.forEach((q, qIndex) => {
@@ -454,9 +454,9 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
               yPosition = 20;
             }
             doc.text(line, margin, yPosition);
-            yPosition += 5;
+            yPosition += 6;
           });
-          yPosition += 2;
+          yPosition += 5;
           
           // Options
           doc.setFont('helvetica', 'normal');
@@ -470,8 +470,8 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
               const optionText = `   ${symbol} ${opt}`;
               const optionLines = doc.splitTextToSize(optionText, maxWidth - 5);
               optionLines.forEach((line: string) => {
-                doc.text(line, margin + 5, yPosition);
-                yPosition += 5;
+                doc.text(line, margin + 8, yPosition);
+                yPosition += 6;
               });
             });
           }
