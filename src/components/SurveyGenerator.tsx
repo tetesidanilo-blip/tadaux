@@ -57,6 +57,8 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const [currentSectionForMore, setCurrentSectionForMore] = useState<number | null>(null);
   const [useNewModel, setUseNewModel] = useState(false);
   const [newModelDescription, setNewModelDescription] = useState("");
+  const [editingSectionName, setEditingSectionName] = useState<number | null>(null);
+  const [editedSectionName, setEditedSectionName] = useState("");
   const { toast } = useToast();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -637,6 +639,34 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     }
   };
 
+  const startEditingSectionName = (sectionIndex: number) => {
+    setEditingSectionName(sectionIndex);
+    setEditedSectionName(sections[sectionIndex].name);
+  };
+
+  const saveSectionName = () => {
+    if (editingSectionName === null || !editedSectionName.trim()) return;
+
+    setSections(prev => prev.map((section, idx) => 
+      idx === editingSectionName 
+        ? { ...section, name: editedSectionName.trim() }
+        : section
+    ));
+
+    toast({
+      title: "Nome sezione aggiornato",
+      description: "Il nome della sezione è stato modificato con successo",
+    });
+
+    setEditingSectionName(null);
+    setEditedSectionName("");
+  };
+
+  const cancelEditingSectionName = () => {
+    setEditingSectionName(null);
+    setEditedSectionName("");
+  };
+
   const deleteQuestion = (sectionIndex: number, questionIndex: number) => {
     setSections(prev => prev.map((section, sIdx) => {
       if (sIdx === sectionIndex) {
@@ -1166,9 +1196,42 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                   {sections.map((section, sectionIndex) => (
                     <div key={sectionIndex} className="space-y-4">
                       <div className="flex items-center justify-between border-b pb-2">
-                        <h4 className="text-xl font-bold text-primary">
-                          {section.name}
-                        </h4>
+                        {editingSectionName === sectionIndex ? (
+                          <div className="flex items-center gap-2 flex-1">
+                            <Input
+                              value={editedSectionName}
+                              onChange={(e) => setEditedSectionName(e.target.value)}
+                              className="text-xl font-bold"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') saveSectionName();
+                                if (e.key === 'Escape') cancelEditingSectionName();
+                              }}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={saveSectionName}
+                            >
+                              <Check className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={cancelEditingSectionName}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <h4 
+                            className="text-xl font-bold text-primary cursor-pointer hover:bg-muted/50 px-2 py-1 rounded transition-colors"
+                            onClick={() => startEditingSectionName(sectionIndex)}
+                            title="Clicca per modificare il nome"
+                          >
+                            {section.name}
+                          </h4>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
