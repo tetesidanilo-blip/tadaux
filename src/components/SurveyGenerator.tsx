@@ -4,11 +4,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, FileText, Edit2, Trash2, Check, X, Languages, MessageSquare, Plus, CheckCircle2, Circle, Download, Eye } from "lucide-react";
+import { Loader2, Upload, FileText, Edit2, Trash2, Check, X, Languages, MessageSquare, Plus, CheckCircle2, Circle, Download, Eye, Save } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { SaveSurveyDialog } from "./SaveSurveyDialog";
 
 interface Question {
   question: string;
@@ -48,6 +49,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const [addingSectionManually, setAddingSectionManually] = useState(false);
   const [newSectionName, setNewSectionName] = useState("");
   const [addingSectionDialog, setAddingSectionDialog] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [newSectionDescription, setNewSectionDescription] = useState("");
   const [newSectionLanguage, setNewSectionLanguage] = useState("it");
@@ -1901,6 +1903,14 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
 ...
       </Dialog>
+
+      {/* Save Survey Dialog */}
+      <SaveSurveyDialog 
+        open={showSaveDialog}
+        onOpenChange={setShowSaveDialog}
+        sections={sections}
+        surveyLanguage={language}
+      />
     </div>
   );
 };
