@@ -1639,7 +1639,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                  </div>
 
                 {/* Pulsante per aggiungere una nuova sezione con AI */}
-                <div className="mt-6 pt-6 border-t">
+                <div className="mt-6 pt-6 border-t-2 border-border/60">
                   <Button
                     variant="outline"
                     className="w-full"
