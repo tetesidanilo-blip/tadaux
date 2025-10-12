@@ -262,6 +262,10 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   };
 
   const exportToCSV = () => {
+    const defaultFileName = sections[0]?.name || "questionario";
+    const fileName = prompt("Inserisci il nome del file:", defaultFileName);
+    if (!fileName) return; // User cancelled
+
     const allQuestions = getAllQuestions();
     
     // Map question types to Google Forms format
@@ -311,7 +315,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", "google-forms-survey.csv");
+    link.setAttribute("download", `${fileName}.csv`);
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -324,6 +328,10 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   };
 
   const exportToWord = () => {
+    const defaultFileName = sections[0]?.name || "questionario";
+    const fileName = prompt("Inserisci il nome del file:", defaultFileName);
+    if (!fileName) return; // User cancelled
+
     let content = `QUESTIONARIO GENERATO\n\n`;
     
     sections.forEach((section, sectionIndex) => {
@@ -367,7 +375,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", "survey.doc");
+    link.setAttribute("download", `${fileName}.doc`);
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -380,6 +388,10 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   };
 
   const exportToPDF = async () => {
+    const defaultFileName = sections[0]?.name || "questionario";
+    const fileName = prompt("Inserisci il nome del file:", defaultFileName);
+    if (!fileName) return; // User cancelled
+
     try {
       const { jsPDF } = await import('jspdf');
       const doc = new jsPDF();
@@ -471,7 +483,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
       });
       
       // Save PDF
-      doc.save('survey.pdf');
+      doc.save(`${fileName}.pdf`);
       
       toast({
         title: t("exportSuccess") || "Export completato",
