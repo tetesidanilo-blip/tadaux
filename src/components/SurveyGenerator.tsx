@@ -387,10 +387,11 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
       let yPosition = 20;
       const pageHeight = doc.internal.pageSize.height;
       const margin = 20;
+      const maxWidth = 170;
       
       // Title
       doc.setFontSize(16);
-      doc.setFont(undefined, 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.text('QUESTIONARIO GENERATO', margin, yPosition);
       yPosition += 15;
       
@@ -403,12 +404,16 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
         
         // Section title
         doc.setFontSize(14);
-        doc.setFont(undefined, 'bold');
-        doc.text(`SEZIONE: ${section.name}`, margin, yPosition);
-        yPosition += 10;
+        doc.setFont('helvetica', 'bold');
+        const sectionLines = doc.splitTextToSize(`SEZIONE: ${section.name}`, maxWidth);
+        sectionLines.forEach((line: string) => {
+          doc.text(line, margin, yPosition);
+          yPosition += 7;
+        });
+        yPosition += 3;
         
         doc.setFontSize(10);
-        doc.setFont(undefined, 'normal');
+        doc.setFont('helvetica', 'normal');
         
         section.questions.forEach((q, qIndex) => {
           const questionNumber = sectionIndex * 100 + qIndex + 1;
@@ -428,26 +433,38 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
             'dropdown': 'Menu a tendina'
           };
           
+          doc.setFont('helvetica', 'bold');
           const questionText = `${questionNumber}. ${q.question} (${typeLabels[q.type] || q.type})${q.required ? ' *OBB.' : ''}`;
-          const lines = doc.splitTextToSize(questionText, 170);
-          doc.text(lines, margin, yPosition);
-          yPosition += lines.length * 5 + 3;
+          const questionLines = doc.splitTextToSize(questionText, maxWidth);
+          questionLines.forEach((line: string) => {
+            if (yPosition > pageHeight - 20) {
+              doc.addPage();
+              yPosition = 20;
+            }
+            doc.text(line, margin, yPosition);
+            yPosition += 5;
+          });
+          yPosition += 2;
           
           // Options
+          doc.setFont('helvetica', 'normal');
           if (q.options && q.options.length > 0) {
             q.options.forEach((opt) => {
               if (yPosition > pageHeight - 20) {
                 doc.addPage();
                 yPosition = 20;
               }
-              const symbol = q.type === 'checkbox' ? '☐' : '○';
-              const optionLines = doc.splitTextToSize(`   ${symbol} ${opt}`, 165);
-              doc.text(optionLines, margin + 5, yPosition);
-              yPosition += optionLines.length * 5;
+              const symbol = q.type === 'checkbox' ? '[ ]' : '( )';
+              const optionText = `   ${symbol} ${opt}`;
+              const optionLines = doc.splitTextToSize(optionText, maxWidth - 5);
+              optionLines.forEach((line: string) => {
+                doc.text(line, margin + 5, yPosition);
+                yPosition += 5;
+              });
             });
           }
           
-          yPosition += 5;
+          yPosition += 3;
         });
         
         yPosition += 5;
