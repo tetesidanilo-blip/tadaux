@@ -14,7 +14,103 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      survey_responses: {
+        Row: {
+          id: string
+          responses: Json
+          submitted_at: string
+          survey_id: string
+        }
+        Insert: {
+          id?: string
+          responses: Json
+          submitted_at?: string
+          survey_id: string
+        }
+        Update: {
+          id?: string
+          responses?: Json
+          submitted_at?: string
+          survey_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_responses_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      surveys: {
+        Row: {
+          created_at: string
+          description: string | null
+          expired_message: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          language: string
+          sections: Json
+          share_token: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          expired_message?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          language?: string
+          sections: Json
+          share_token: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          expired_message?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          language?: string
+          sections?: Json
+          share_token?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "surveys_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
