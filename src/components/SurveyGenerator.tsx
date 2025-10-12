@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, FileText, Edit2, Trash2, Check, X, Languages, MessageSquare, Plus, CheckCircle2, Circle } from "lucide-react";
+import { Loader2, Upload, FileText, Edit2, Trash2, Check, X, Languages, MessageSquare, Plus, CheckCircle2, Circle, Download } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -905,6 +905,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                       variant="outline"
                       onClick={exportToCSV}
                     >
+                      <Download className="w-4 h-4 mr-2" />
                       {t("downloadCSV")}
                     </Button>
                     <Button
@@ -1338,6 +1339,16 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                       </p>
                     </div>
                   </div>
+                </div>
+
+                <div className="flex justify-center mt-6">
+                  <Button
+                    onClick={exportToCSV}
+                    size="lg"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    {t("downloadCSV")}
+                  </Button>
                 </div>
               </div>
             </Card>
