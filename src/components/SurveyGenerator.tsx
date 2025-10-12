@@ -1522,7 +1522,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                     <DropdownMenuTrigger asChild>
                       <Button size="lg">
                         <Download className="w-4 h-4 mr-2" />
-                        {t("downloadCSV")}
+                        Scarica
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="bg-background">
