@@ -579,7 +579,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
 
     setSourceFeedback({ sectionIndex, questionIndex, feedback });
     setFeedbackMode('multiple');
-    setShowingFeedback(null);
+    // Keep the feedback box open so user can continue editing if needed
   };
 
   const cancelFeedbackMode = () => {
