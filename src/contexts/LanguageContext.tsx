@@ -64,6 +64,7 @@ const translations = {
     surveyDeleted: "Survey deleted",
     surveyActivated: "Survey activated",
     surveyDeactivated: "Survey deactivated",
+    surveyPreview: "Survey Preview",
     
     // Survey
     submitSurvey: "Submit Survey",

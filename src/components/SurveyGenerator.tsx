@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Upload, FileText, Edit2, Trash2, Check, X, Languages, MessageSquare, Plus, CheckCircle2, Circle, Download, Eye, Save } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -1901,7 +1902,50 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
 
       {/* Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-...
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t("surveyPreview")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            {sections.map((section, sectionIndex) => (
+              <div key={sectionIndex} className="space-y-4">
+                <h3 className="text-xl font-semibold">{section.name}</h3>
+                {section.questions.map((question, questionIndex) => (
+                  <div key={questionIndex} className="p-4 border rounded-lg space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-muted-foreground">{questionIndex + 1}.</span>
+                      <div className="flex-1">
+                        <p className="font-medium">{question.question}</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {question.type === "multiple" && "Risposta multipla"}
+                          {question.type === "single" && "Risposta singola"}
+                          {question.type === "open" && "Risposta aperta"}
+                        </p>
+                        {question.options && question.options.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {question.options.map((option, optionIndex) => (
+                              <div key={optionIndex} className="flex items-center gap-2">
+                                {question.type === "multiple" ? (
+                                  <Checkbox disabled />
+                                ) : (
+                                  <div className="w-4 h-4 rounded-full border-2" />
+                                )}
+                                <span className="text-sm">{option}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {question.type === "open" && (
+                          <Textarea className="mt-3" disabled placeholder="Risposta aperta..." />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </DialogContent>
       </Dialog>
 
       {/* Save Survey Dialog */}
