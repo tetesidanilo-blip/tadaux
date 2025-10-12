@@ -323,6 +323,100 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
     });
   };
 
+  const exportToGoogleForms = () => {
+    // Map question types to Google Forms JSON format
+    const mapQuestionTypeToGoogleForms = (type: string) => {
+      switch (type) {
+        case "multiple_choice":
+          return "RADIO";
+        case "checkbox":
+          return "CHECKBOX";
+        case "short_answer":
+          return "SHORT_ANSWER";
+        case "paragraph":
+          return "PARAGRAPH";
+        case "dropdown":
+          return "DROP_DOWN";
+        default:
+          return "SHORT_ANSWER";
+      }
+    };
+
+    // Build Google Forms JSON structure
+    const formItems: any[] = [];
+    
+    sections.forEach((section) => {
+      // Add section header
+      if (section.name) {
+        formItems.push({
+          title: section.name,
+          description: "",
+          itemType: "PAGE_BREAK"
+        });
+      }
+
+      // Add questions from this section
+      section.questions.forEach((q) => {
+        const questionType = mapQuestionTypeToGoogleForms(q.type);
+        const item: any = {
+          title: q.question,
+          itemType: "QUESTION"
+        };
+
+        // Build question object based on type
+        if (questionType === "SHORT_ANSWER" || questionType === "PARAGRAPH") {
+          item.questionItem = {
+            question: {
+              required: q.required,
+              textQuestion: {
+                paragraph: questionType === "PARAGRAPH"
+              }
+            }
+          };
+        } else if (questionType === "RADIO" || questionType === "CHECKBOX" || questionType === "DROP_DOWN") {
+          item.questionItem = {
+            question: {
+              required: q.required,
+              choiceQuestion: {
+                type: questionType,
+                options: (q.options || []).map(opt => ({
+                  value: opt
+                }))
+              }
+            }
+          };
+        }
+
+        formItems.push(item);
+      });
+    });
+
+    const googleFormData = {
+      info: {
+        title: "Generated Survey",
+        documentTitle: "Survey"
+      },
+      items: formItems
+    };
+
+    // Create and download JSON file
+    const json = JSON.stringify(googleFormData, null, 2);
+    const blob = new Blob([json], { type: "application/json;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "survey.form.json");
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Google Forms JSON esportato",
+      description: "Il file JSON può essere importato direttamente in Google Forms",
+    });
+  };
+
   const removeSection = (sectionName: string) => {
     setSections(prev => prev.filter(s => s.name !== sectionName));
     toast({
@@ -1354,9 +1448,9 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                         <FileText className="w-4 h-4 mr-2" />
                         CSV
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={exportToCSV}>
+                      <DropdownMenuItem onClick={exportToGoogleForms}>
                         <Download className="w-4 h-4 mr-2" />
-                        Google Forms (CSV)
+                        Google Forms (JSON)
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
