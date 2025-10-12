@@ -1077,13 +1077,28 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                 <div className="flex items-center justify-between">
                   <h3 className="text-2xl font-bold">{t("yourSurvey")}</h3>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={exportToCSV}
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      {t("downloadCSV")}
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                          <Download className="w-4 h-4 mr-2" />
+                          Download
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="bg-background">
+                        <DropdownMenuItem onClick={exportToCSV}>
+                          <FileText className="w-4 h-4 mr-2" />
+                          CSV (Google Forms)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={exportToWord}>
+                          <FileText className="w-4 h-4 mr-2" />
+                          Word (.doc)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={exportToPDF}>
+                          <FileText className="w-4 h-4 mr-2" />
+                          PDF
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button
                       variant="outline"
                       onClick={clearAllSections}
