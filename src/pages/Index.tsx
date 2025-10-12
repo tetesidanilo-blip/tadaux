@@ -1,18 +1,27 @@
-import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Hero } from "@/components/Hero";
-import { SurveyGenerator } from "@/components/SurveyGenerator";
+import { Navbar } from "@/components/Navbar";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
-  const [showGenerator, setShowGenerator] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const handleGetStarted = () => {
+    if (user) {
+      navigate("/dashboard");
+    } else {
+      navigate("/auth");
+    }
+  };
 
   return (
     <LanguageProvider>
-      {showGenerator ? (
-        <SurveyGenerator onBack={() => setShowGenerator(false)} />
-      ) : (
-        <Hero onGetStarted={() => setShowGenerator(true)} />
-      )}
+      <div className="min-h-screen">
+        <Navbar />
+        <Hero onGetStarted={handleGetStarted} />
+      </div>
     </LanguageProvider>
   );
 };

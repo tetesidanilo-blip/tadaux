@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Download } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { Navbar } from "@/components/Navbar";
 
 interface Response {
   id: string;
@@ -156,6 +157,7 @@ const SurveyResponses = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      <Navbar />
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-8">
           <Button variant="outline" onClick={() => navigate("/dashboard")}>

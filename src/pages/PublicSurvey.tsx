@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Navbar } from "@/components/Navbar";
 import { useParams } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -140,28 +141,34 @@ const PublicSurvey = () => {
 
   if (!survey) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <XCircle className="h-16 w-16 text-destructive mb-4" />
-            <h2 className="text-2xl font-bold mb-2">{t("surveyNotFound")}</h2>
-            <p className="text-muted-foreground text-center">{t("surveyNotFoundDesc")}</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+        <Navbar />
+        <div className="flex items-center justify-center px-4 py-16">
+          <Card className="max-w-md w-full">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <XCircle className="h-16 w-16 text-destructive mb-4" />
+              <h2 className="text-2xl font-bold mb-2">{t("surveyNotFound")}</h2>
+              <p className="text-muted-foreground text-center">{t("surveyNotFoundDesc")}</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   if (!survey.is_active) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <XCircle className="h-16 w-16 text-destructive mb-4" />
-            <h2 className="text-2xl font-bold mb-2">{t("surveyInactive")}</h2>
-            <p className="text-muted-foreground text-center">{t("surveyInactiveDesc")}</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+        <Navbar />
+        <div className="flex items-center justify-center px-4 py-16">
+          <Card className="max-w-md w-full">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <XCircle className="h-16 w-16 text-destructive mb-4" />
+              <h2 className="text-2xl font-bold mb-2">{t("surveyInactive")}</h2>
+              <p className="text-muted-foreground text-center">{t("surveyInactiveDesc")}</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -171,40 +178,48 @@ const PublicSurvey = () => {
       (survey.language === "it" ? "Questo questionario è scaduto" : "This survey has expired");
     
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <XCircle className="h-16 w-16 text-destructive mb-4" />
-            <h2 className="text-2xl font-bold mb-2">{t("surveyExpired")}</h2>
-            <p className="text-muted-foreground text-center">{expiredMessage}</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+        <Navbar />
+        <div className="flex items-center justify-center px-4 py-16">
+          <Card className="max-w-md w-full">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <XCircle className="h-16 w-16 text-destructive mb-4" />
+              <h2 className="text-2xl font-bold mb-2">{t("surveyExpired")}</h2>
+              <p className="text-muted-foreground text-center">{expiredMessage}</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
-            <h2 className="text-2xl font-bold mb-2">{t("thankYou")}</h2>
-            <p className="text-muted-foreground text-center">{t("responseSubmitted")}</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+        <Navbar />
+        <div className="flex items-center justify-center px-4 py-16">
+          <Card className="max-w-md w-full">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
+              <h2 className="text-2xl font-bold mb-2">{t("thankYou")}</h2>
+              <p className="text-muted-foreground text-center">{t("responseSubmitted")}</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 py-12 px-4">
-      <div className="container mx-auto max-w-3xl">
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="text-3xl">{survey.title}</CardTitle>
-            {survey.description && (
-              <CardDescription className="text-base">{survey.description}</CardDescription>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      <Navbar />
+      <div className="py-12 px-4">
+        <div className="container mx-auto max-w-3xl">
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="text-3xl">{survey.title}</CardTitle>
+              {survey.description && (
+                <CardDescription className="text-base">{survey.description}</CardDescription>
             )}
           </CardHeader>
         </Card>
@@ -312,6 +327,7 @@ const PublicSurvey = () => {
             {submitting ? t("submitting") : t("submitSurvey")}
           </Button>
         </form>
+        </div>
       </div>
     </div>
   );

@@ -11,7 +11,7 @@ export const Hero = ({ onGetStarted }: HeroProps) => {
   const { language, setLanguage, t } = useLanguage();
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-[calc(100vh-64px)] flex items-center justify-center overflow-hidden">
       <div 
         className="absolute inset-0 z-0"
         style={{
@@ -28,17 +28,6 @@ export const Hero = ({ onGetStarted }: HeroProps) => {
       </div>
 
       <div className="container relative z-10 px-4 md:px-6">
-        <div className="absolute top-4 right-4 z-20">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setLanguage(language === "en" ? "it" : "en")}
-            className="flex items-center gap-2"
-          >
-            <Languages className="w-4 h-4" />
-            {language === "en" ? "IT" : "EN"}
-          </Button>
-        </div>
 
         <div className="flex flex-col items-center text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
           <div className="space-y-4 max-w-3xl">

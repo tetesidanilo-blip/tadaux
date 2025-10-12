@@ -7,9 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Calendar, Copy, Edit, ExternalLink, Eye, Power, PowerOff, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Calendar, Copy, ExternalLink, Eye, Power, PowerOff, Trash2, Plus, BarChart, Clock } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
+import { SurveyGenerator } from "@/components/SurveyGenerator";
+import { Navbar } from "@/components/Navbar";
 
 interface Survey {
   id: string;
@@ -26,8 +29,11 @@ const Dashboard = () => {
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showGenerator, setShowGenerator] = useState(false);
+  const [extendSurveyId, setExtendSurveyId] = useState<string | null>(null);
+  const [newExpiryDays, setNewExpiryDays] = useState<number>(7);
   
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -61,9 +67,26 @@ const Dashboard = () => {
     }
   };
 
-  const handleLogout = async () => {
-    await signOut();
-    navigate("/");
+  const handleExtendExpiry = async () => {
+    if (!extendSurveyId) return;
+
+    try {
+      const newExpiryDate = addDays(new Date(), newExpiryDays);
+      
+      const { error } = await supabase
+        .from("surveys")
+        .update({ expires_at: newExpiryDate.toISOString() })
+        .eq("id", extendSurveyId);
+
+      if (error) throw error;
+
+      toast.success(t("expiryExtended"));
+      loadSurveys();
+      setExtendSurveyId(null);
+    } catch (error) {
+      console.error("Error extending expiry:", error);
+      toast.error("Failed to extend expiry");
+    }
   };
 
   const handleDelete = async () => {
@@ -124,23 +147,60 @@ const Dashboard = () => {
     );
   }
 
+  if (showGenerator) {
+    return <SurveyGenerator onBack={() => setShowGenerator(false)} />;
+  }
+
+  const totalResponses = surveys.reduce((sum, s) => sum + (s.response_count || 0), 0);
+  const activeSurveys = surveys.filter(s => s.is_active && !isSurveyExpired(s.expires_at)).length;
+  const expiredSurveys = surveys.filter(s => isSurveyExpired(s.expires_at)).length;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      <Navbar />
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">{t("myQuestionnaires")}</h1>
-          <Button onClick={handleLogout} variant="outline">
-            {t("logout")}
+          <Button 
+            onClick={() => setShowGenerator(true)}
+            size="lg"
+            className="gap-2"
+          >
+            <Plus className="h-5 w-5" />
+            {t("createNew")}
           </Button>
         </div>
 
-        <Button 
-          onClick={() => navigate("/")} 
-          className="mb-6"
-          size="lg"
-        >
-          {t("createNew")}
-        </Button>
+        {/* Statistics Cards */}
+        <div className="grid gap-4 md:grid-cols-3 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{t("totalResponses")}</CardTitle>
+              <BarChart className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalResponses}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{t("activeSurveys")}</CardTitle>
+              <Power className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{activeSurveys}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{t("expiredSurveys")}</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{expiredSurveys}</div>
+            </CardContent>
+          </Card>
+        </div>
 
         {surveys.length === 0 ? (
           <Card>
@@ -241,6 +301,14 @@ const Dashboard = () => {
                           )}
                         </Button>
                         <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setExtendSurveyId(survey.id)}
+                        >
+                          <Clock className="h-4 w-4 mr-1" />
+                          {t("extendExpiry")}
+                        </Button>
+                        <Button
                           variant="destructive"
                           size="sm"
                           onClick={() => setDeleteId(survey.id)}
@@ -273,6 +341,41 @@ const Dashboard = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Extend Expiry Dialog */}
+      <Dialog open={!!extendSurveyId} onOpenChange={() => setExtendSurveyId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("extendExpiry")}</DialogTitle>
+            <DialogDescription>{t("extendExpiryDesc")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t("extendByDays")}</label>
+              <div className="flex gap-2">
+                {[7, 14, 30, 60].map((days) => (
+                  <Button
+                    key={days}
+                    variant={newExpiryDays === days ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setNewExpiryDays(days)}
+                  >
+                    {days} {t("days")}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExtendSurveyId(null)}>
+              {t("cancel")}
+            </Button>
+            <Button onClick={handleExtendExpiry}>
+              {t("extend")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
