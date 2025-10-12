@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, FileText, Edit2, Trash2, Check, X, Languages, MessageSquare, Plus, CheckCircle2, Circle, Download } from "lucide-react";
+import { Loader2, Upload, FileText, Edit2, Trash2, Check, X, Languages, MessageSquare, Plus, CheckCircle2, Circle, Download, Eye } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,6 +52,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const [newSectionDescription, setNewSectionDescription] = useState("");
   const [newSectionLanguage, setNewSectionLanguage] = useState("it");
   const [generatingNewSection, setGeneratingNewSection] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const { toast } = useToast();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1077,6 +1078,13 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                 <div className="flex items-center justify-between">
                   <h3 className="text-2xl font-bold">{t("yourSurvey")}</h3>
                   <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowPreview(true)}
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      Preview
+                    </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline">
@@ -1698,6 +1706,122 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                     {t("generateSection")}
                   </>
                 )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Dialog */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">Preview Questionario</DialogTitle>
+            <DialogDescription>
+              Visualizza come apparirà il questionario una volta compilato
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-8 mt-6">
+            {sections.map((section, sectionIndex) => (
+              <div key={sectionIndex} className="space-y-6">
+                <div className="border-b-2 border-primary pb-3">
+                  <h2 className="text-2xl font-bold text-primary">{section.name}</h2>
+                </div>
+                
+                <div className="space-y-6">
+                  {section.questions.map((question, questionIndex) => {
+                    const questionNumber = sections
+                      .slice(0, sectionIndex)
+                      .reduce((sum, s) => sum + s.questions.length, 0) + questionIndex + 1;
+                    
+                    return (
+                      <div key={questionIndex} className="space-y-3 p-4 rounded-lg bg-muted/30">
+                        <div className="flex items-start gap-2">
+                          <span className="font-semibold text-foreground">
+                            {questionNumber}.
+                          </span>
+                          <div className="flex-1">
+                            <p className="font-medium text-foreground">
+                              {question.question}
+                              {question.required && (
+                                <span className="text-destructive ml-1">*</span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="ml-6 mt-3">
+                          {question.type === "multiple_choice" && question.options && (
+                            <div className="space-y-2">
+                              {question.options.map((option, idx) => (
+                                <label key={idx} className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 p-2 rounded transition-colors">
+                                  <input
+                                    type="radio"
+                                    name={`q-${sectionIndex}-${questionIndex}`}
+                                    className="w-4 h-4"
+                                    disabled
+                                  />
+                                  <span className="text-sm">{option}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+
+                          {question.type === "checkbox" && question.options && (
+                            <div className="space-y-2">
+                              {question.options.map((option, idx) => (
+                                <label key={idx} className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 p-2 rounded transition-colors">
+                                  <input
+                                    type="checkbox"
+                                    className="w-4 h-4"
+                                    disabled
+                                  />
+                                  <span className="text-sm">{option}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+
+                          {question.type === "dropdown" && question.options && (
+                            <select className="w-full md:w-2/3 px-3 py-2 border border-input rounded-md bg-background" disabled>
+                              <option value="">Seleziona un'opzione</option>
+                              {question.options.map((option, idx) => (
+                                <option key={idx} value={option}>{option}</option>
+                              ))}
+                            </select>
+                          )}
+
+                          {question.type === "short_answer" && (
+                            <Input
+                              placeholder="La tua risposta"
+                              className="w-full md:w-2/3"
+                              disabled
+                            />
+                          )}
+
+                          {question.type === "paragraph" && (
+                            <Textarea
+                              placeholder="La tua risposta"
+                              className="w-full min-h-24"
+                              disabled
+                            />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            <div className="flex justify-center pt-6 pb-4 border-t">
+              <Button
+                size="lg"
+                className="px-8"
+                disabled
+              >
+                Invia
               </Button>
             </div>
           </div>
