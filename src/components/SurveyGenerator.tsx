@@ -1486,14 +1486,6 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                                             <Button
                                               variant="ghost"
                                               size="sm"
-                                              onClick={() => toggleFeedback(sectionIndex, questionIndex)}
-                                              className={question.feedback ? "text-primary" : ""}
-                                            >
-                                              <MessageSquare className="w-4 h-4" />
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
                                               onClick={() => startEditingQuestion(sectionIndex, questionIndex)}
                                             >
                                               <Edit2 className="w-4 h-4" />
@@ -1550,6 +1542,21 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                                         <div className="border border-muted-foreground/30 rounded px-3 py-2 w-full max-w-md flex items-center justify-between">
                                           <span className="text-sm text-muted-foreground">Scegli</span>
                                           <span className="text-muted-foreground">▼</span>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Feedback Button - Below Question */}
+                                      {feedbackMode !== 'multiple' && (
+                                        <div className="mt-3 pt-3 border-t border-muted-foreground/20">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => toggleFeedback(sectionIndex, questionIndex)}
+                                            className={question.feedback ? "text-primary" : ""}
+                                          >
+                                            <MessageSquare className="w-4 h-4 mr-2" />
+                                            {question.feedback ? t("editFeedback") || "Modifica feedback" : t("addFeedback") || "Aggiungi feedback"}
+                                          </Button>
                                         </div>
                                       )}
                                     </div>
