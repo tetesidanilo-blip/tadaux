@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,9 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [sections, setSections] = useState<Section[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<{ sectionIndex: number; questionIndex: number } | null>(null);
   const [editedQuestion, setEditedQuestion] = useState<Question | null>(null);
   const [showingFeedback, setShowingFeedback] = useState<{ sectionIndex: number; questionIndex: number } | null>(null);
@@ -62,6 +65,76 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const [editingSectionName, setEditingSectionName] = useState<number | null>(null);
   const [editedSectionName, setEditedSectionName] = useState("");
   const { toast } = useToast();
+
+  // Autosave effect - saves after every change to sections
+  useEffect(() => {
+    const saveDraft = async () => {
+      if (sections.length === 0) return;
+      
+      setIsSaving(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          console.log("No user logged in, skipping autosave");
+          return;
+        }
+
+        // Generate a share token if this is a new draft
+        const shareToken = currentDraftId ? undefined : Math.random().toString(36).substring(2, 15);
+
+        if (currentDraftId) {
+          // Update existing draft
+          const { error } = await supabase
+            .from('surveys')
+            .update({
+              sections: sections as any,
+              language,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', currentDraftId);
+
+          if (error) throw error;
+        } else {
+          // Create new draft
+          const { data, error } = await supabase
+            .from('surveys')
+            .insert([{
+              user_id: user.id,
+              sections: sections as any,
+              language,
+              title: 'Bozza senza titolo',
+              status: 'draft',
+              share_token: shareToken!,
+              is_active: false
+            }])
+            .select()
+            .single();
+
+          if (error) throw error;
+          if (data) setCurrentDraftId(data.id);
+        }
+      } catch (error) {
+        console.error("Error autosaving:", error);
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
+    // Clear any existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Save immediately after each change
+    saveDraft();
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [sections, language, currentDraftId]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1153,22 +1226,24 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
           {sections.length > 0 && (
             <Card className="p-6 backdrop-blur-sm bg-card/50">
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-2xl font-bold">{t("yourSurvey")}</h3>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => setShowSaveDialog(true)}
-                    >
-                      <Save className="w-4 h-4 mr-2" />
-                      Salva
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowPreview(true)}
-                    >
-                      <Eye className="w-4 h-4 mr-2" />
-                      Preview
-                    </Button>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-2xl font-bold">{t("yourSurvey")}</h3>
+                      {isSaving && (
+                        <span className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Salvataggio...
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowPreview(true)}
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Preview
+                      </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline">
@@ -1964,6 +2039,22 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                 ))}
               </div>
             ))}
+          </div>
+          <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => setShowPreview(false)}
+            >
+              Chiudi
+            </Button>
+            <Button
+              onClick={() => {
+                setShowPreview(false);
+                setShowSaveDialog(true);
+              }}
+            >
+              Pubblica
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

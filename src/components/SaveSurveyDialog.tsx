@@ -65,25 +65,62 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage 
     setSaving(true);
 
     try {
-      const shareToken = crypto.randomUUID();
+      // Check if there's a draft to update
+      const { data: existingDrafts } = await supabase
+        .from('surveys')
+        .select('id, share_token')
+        .eq('user_id', user.id)
+        .eq('status', 'draft')
+        .order('updated_at', { ascending: false })
+        .limit(1);
 
-      const { data, error } = await supabase
-        .from("surveys")
-        .insert([{
-          user_id: user.id,
-          title: title.trim(),
-          description: description.trim() || null,
-          sections: sections as any,
-          language: surveyLanguage,
-          share_token: shareToken,
-          is_active: true,
-          expires_at: expiresAt ? expiresAt.toISOString() : null,
-          expired_message: expiredMessage.trim() || null
-        }])
-        .select()
-        .single();
+      let shareToken: string;
+      let surveyId: string | null = null;
 
-      if (error) throw error;
+      if (existingDrafts && existingDrafts.length > 0) {
+        // Update existing draft to published
+        shareToken = existingDrafts[0].share_token;
+        surveyId = existingDrafts[0].id;
+
+        const { error } = await supabase
+          .from("surveys")
+          .update({
+            title: title.trim(),
+            description: description.trim() || null,
+            sections: sections as any,
+            language: surveyLanguage,
+            is_active: true,
+            status: 'published',
+            expires_at: expiresAt ? expiresAt.toISOString() : null,
+            expired_message: expiredMessage.trim() || null
+          })
+          .eq('id', surveyId);
+
+        if (error) throw error;
+      } else {
+        // Create new published survey
+        shareToken = crypto.randomUUID();
+
+        const { data, error } = await supabase
+          .from("surveys")
+          .insert([{
+            user_id: user.id,
+            title: title.trim(),
+            description: description.trim() || null,
+            sections: sections as any,
+            language: surveyLanguage,
+            share_token: shareToken,
+            is_active: true,
+            status: 'published',
+            expires_at: expiresAt ? expiresAt.toISOString() : null,
+            expired_message: expiredMessage.trim() || null
+          }])
+          .select()
+          .single();
+
+        if (error) throw error;
+        if (data) surveyId = data.id;
+      }
 
       const surveyLink = `${window.location.origin}/survey/${shareToken}`;
       
