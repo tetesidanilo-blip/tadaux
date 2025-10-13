@@ -1555,7 +1555,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                                             className={question.feedback ? "text-primary" : ""}
                                           >
                                             <MessageSquare className="w-4 h-4 mr-2" />
-                                            {question.feedback ? t("editFeedback") || "Modifica feedback" : t("addFeedback") || "Aggiungi feedback"}
+                                            {question.feedback ? "Modifica AI Feedback" : "Inserisci AI Feedback"}
                                           </Button>
                                         </div>
                                       )}
