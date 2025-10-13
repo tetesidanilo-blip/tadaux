@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { CalendarIcon, Info } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -117,7 +118,8 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage 
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <TooltipProvider>
+          <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="title">{t("surveyTitle")} *</Label>
             <Input
@@ -140,7 +142,19 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage 
           </div>
 
           <div className="space-y-2">
-            <Label>{t("expirationDate")}</Label>
+            <div className="flex items-center gap-1.5">
+              <Label>{t("expirationDate")}</Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">
+                    Imposta quando il questionario smetterà di accettare risposte. Puoi lasciarlo vuoto per un questionario sempre attivo.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <div className="flex gap-2 mb-2">
               <Button
                 type="button"
@@ -223,6 +237,7 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage 
             </Button>
           </div>
         </div>
+        </TooltipProvider>
       </DialogContent>
     </Dialog>
   );
