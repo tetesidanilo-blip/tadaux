@@ -1157,6 +1157,12 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                   <h3 className="text-2xl font-bold">{t("yourSurvey")}</h3>
                   <div className="flex gap-2">
                     <Button
+                      onClick={() => setShowSaveDialog(true)}
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      Salva
+                    </Button>
+                    <Button
                       variant="outline"
                       onClick={() => setShowPreview(true)}
                     >
