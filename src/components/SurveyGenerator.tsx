@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { SaveSurveyDialog } from "./SaveSurveyDialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 interface Question {
   question: string;
@@ -48,7 +50,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const [showingFeedback, setShowingFeedback] = useState<{ sectionIndex: number; questionIndex: number } | null>(null);
   const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
   const [applyingFeedback, setApplyingFeedback] = useState(false);
-  const [feedbackMode, setFeedbackMode] = useState<'single' | 'multiple' | null>(null);
+  const [feedbackMode, setFeedbackMode] = useState<'single' | 'multiple'>('single');
   const [sourceFeedback, setSourceFeedback] = useState<{ sectionIndex: number; questionIndex: number; feedback: string } | null>(null);
   const [addingSectionManually, setAddingSectionManually] = useState(false);
   const [newSectionName, setNewSectionName] = useState("");
@@ -783,8 +785,10 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
   const toggleFeedback = (sectionIndex: number, questionIndex: number) => {
     if (showingFeedback?.sectionIndex === sectionIndex && showingFeedback?.questionIndex === questionIndex) {
       setShowingFeedback(null);
+      setFeedbackMode('single'); // Reset to default mode
     } else {
       setShowingFeedback({ sectionIndex, questionIndex });
+      setFeedbackMode('single'); // Reset to default mode when opening new feedback
     }
   };
 
@@ -1654,21 +1658,66 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                                 {showingFeedback?.sectionIndex === sectionIndex && 
                                 showingFeedback?.questionIndex === questionIndex && (
                                   <div className="ml-11 bg-muted/50 p-4 rounded-lg space-y-3">
-                                    <label className="text-sm font-medium">{t("feedbackLabel")}</label>
-                                    <Textarea
-                                      placeholder={t("feedbackPlaceholder")}
-                                      defaultValue={question.feedback || ""}
-                                      onBlur={(e) => saveFeedback(sectionIndex, questionIndex, e.target.value)}
-                                      className="min-h-20"
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                      {t("feedbackHelp")}
-                                    </p>
+                                    <div className="space-y-2">
+                                      <label className="text-sm font-medium">
+                                        {t("feedbackScope")}
+                                      </label>
+                                      <RadioGroup 
+                                        value={feedbackMode}
+                                        onValueChange={(value) => setFeedbackMode(value as 'single' | 'multiple')}
+                                        className="flex flex-col space-y-2"
+                                      >
+                                        <div className="flex items-center space-x-2">
+                                          <RadioGroupItem 
+                                            value="single" 
+                                            id={`feedback-single-${sectionIndex}-${questionIndex}`} 
+                                          />
+                                          <Label 
+                                            htmlFor={`feedback-single-${sectionIndex}-${questionIndex}`}
+                                            className="text-sm font-normal cursor-pointer"
+                                          >
+                                            {t("applySingleQuestion")}
+                                          </Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                          <RadioGroupItem 
+                                            value="multiple" 
+                                            id={`feedback-multiple-${sectionIndex}-${questionIndex}`} 
+                                          />
+                                          <Label 
+                                            htmlFor={`feedback-multiple-${sectionIndex}-${questionIndex}`}
+                                            className="text-sm font-normal cursor-pointer"
+                                          >
+                                            {t("applyMultipleQuestions")}
+                                          </Label>
+                                        </div>
+                                      </RadioGroup>
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                      <label className="text-sm font-medium">{t("feedbackLabel")}</label>
+                                      <Textarea
+                                        placeholder={t("feedbackPlaceholder")}
+                                        defaultValue={question.feedback || ""}
+                                        onBlur={(e) => saveFeedback(sectionIndex, questionIndex, e.target.value)}
+                                        className="min-h-20"
+                                      />
+                                      <p className="text-xs text-muted-foreground">
+                                        {t("feedbackHelp")}
+                                      </p>
+                                    </div>
+
                                     <div className="flex gap-2 pt-2">
                                       <Button
                                         variant="default"
                                         size="sm"
-                                        onClick={() => applyFeedbackToQuestion(sectionIndex, questionIndex)}
+                                        onClick={() => {
+                                          if (feedbackMode === 'single') {
+                                            applyFeedbackToQuestion(sectionIndex, questionIndex);
+                                          } else {
+                                            startExtendFeedback(sectionIndex, questionIndex);
+                                          }
+                                        }}
                                         disabled={applyingFeedback || !question.feedback}
                                       >
                                         {applyingFeedback ? (
@@ -1681,12 +1730,11 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
                                         )}
                                       </Button>
                                       <Button
-                                        variant="outline"
+                                        variant="ghost"
                                         size="sm"
-                                        onClick={() => startExtendFeedback(sectionIndex, questionIndex)}
-                                        disabled={applyingFeedback || !question.feedback}
+                                        onClick={() => toggleFeedback(sectionIndex, questionIndex)}
                                       >
-                                        {t("extendToOthers")}
+                                        {t("cancel")}
                                       </Button>
                                     </div>
                                   </div>
