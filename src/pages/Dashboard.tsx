@@ -386,15 +386,6 @@ const Dashboard = () => {
                           {t("edit")}
                         </Button>
                         <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => setDeleteId(survey.id)}
-                          className="col-span-2"
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          {t("delete")}
-                        </Button>
-                        <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setExtendSurveyId(survey.id)}
