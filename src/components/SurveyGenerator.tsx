@@ -12,7 +12,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { SaveSurveyDialog } from "./SaveSurveyDialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 
 interface Question {
@@ -52,7 +51,6 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
   const [showingFeedback, setShowingFeedback] = useState<{ sectionIndex: number; questionIndex: number } | null>(null);
   const [selectedQuestions, setSelectedQuestions] = useState<Array<{sectionIndex: number, questionIndex: number}>>([]);
   const [applyingFeedback, setApplyingFeedback] = useState(false);
-  const [feedbackMode, setFeedbackMode] = useState<'single' | 'multiple'>('single');
   const [addingSectionManually, setAddingSectionManually] = useState(false);
   const [newSectionName, setNewSectionName] = useState("");
   const [addingSectionDialog, setAddingSectionDialog] = useState(false);
@@ -787,11 +785,9 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
   const toggleFeedback = (sectionIndex: number, questionIndex: number) => {
     if (showingFeedback?.sectionIndex === sectionIndex && showingFeedback?.questionIndex === questionIndex) {
       setShowingFeedback(null);
-      setFeedbackMode('single');
       setSelectedQuestions([]);
     } else {
       setShowingFeedback({ sectionIndex, questionIndex });
-      setFeedbackMode('single');
       setSelectedQuestions([]);
     }
   };
@@ -1452,8 +1448,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                       )}
                                       
                                       {/* Question Type & Feedback Buttons - Below Question */}
-                                      {feedbackMode !== 'multiple' && (
-                                        <div className="mt-3 pt-3 border-t border-muted-foreground/20 flex items-center gap-3">
+                                      <div className="mt-3 pt-3 border-t border-muted-foreground/20 flex items-center gap-3">
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                               <Button variant="outline" size="sm" className="gap-2">
@@ -1575,110 +1570,11 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                             AI Feedback
                                           </Button>
                                         </div>
-                                      )}
                                   </div>
                                 
                                 {showingFeedback?.sectionIndex === sectionIndex &&
                                 showingFeedback?.questionIndex === questionIndex && (
                                   <div className="ml-11 bg-muted/50 p-4 rounded-lg space-y-3">
-                                    <div className="space-y-2">
-                                      <label className="text-sm font-medium">
-                                        {t("feedbackScope")}
-                                      </label>
-                                      <RadioGroup 
-                                        value={feedbackMode}
-                                        onValueChange={(value) => {
-                                          setFeedbackMode(value as 'single' | 'multiple');
-                                          if (value === 'single') {
-                                            setSelectedQuestions([]);
-                                          }
-                                        }}
-                                        className="flex flex-col space-y-2"
-                                      >
-                                        <div className="flex items-center space-x-2">
-                                          <RadioGroupItem 
-                                            value="single" 
-                                            id={`feedback-single-${sectionIndex}-${questionIndex}`} 
-                                          />
-                                          <Label 
-                                            htmlFor={`feedback-single-${sectionIndex}-${questionIndex}`}
-                                            className="text-sm font-normal cursor-pointer"
-                                          >
-                                            {t("applySingleQuestion")}
-                                          </Label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                          <RadioGroupItem 
-                                            value="multiple" 
-                                            id={`feedback-multiple-${sectionIndex}-${questionIndex}`} 
-                                          />
-                                          <Label 
-                                            htmlFor={`feedback-multiple-${sectionIndex}-${questionIndex}`}
-                                            className="text-sm font-normal cursor-pointer"
-                                          >
-                                            {t("applyMultipleQuestions")}
-                                          </Label>
-                                        </div>
-                                      </RadioGroup>
-                                    </div>
-                                    
-                                      {feedbackMode === 'multiple' && (
-                                        <div className="space-y-2">
-                                          <label className="text-sm font-medium">
-                                            Seleziona a quali domande applicare il feedback:
-                                          </label>
-                                          <div className="flex items-center gap-2">
-                                            <Button variant="outline" size="sm" onClick={() => setShowSelectQuestionsDialog(true)}>
-                                              Scegli domande
-                                            </Button>
-                                            <span className="text-xs text-muted-foreground">
-                                              {selectedQuestions.length} selezionate
-                                            </span>
-                                          </div>
-
-                                          <Dialog open={showSelectQuestionsDialog} onOpenChange={setShowSelectQuestionsDialog}>
-                                            <DialogContent className="max-w-lg">
-                                              <DialogHeader>
-                                                <DialogTitle>Seleziona domande</DialogTitle>
-                                                <DialogDescription>
-                                                  Spunta le domande a cui applicare il feedback
-                                                </DialogDescription>
-                                              </DialogHeader>
-                                              <ScrollArea className="h-64 border rounded p-2">
-                                                {sections.map((section, sIdx) =>
-                                                  section.questions.map((q, qIdx) => (
-                                                    <div key={`${sIdx}-${qIdx}`} className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded">
-                                                      <Checkbox
-                                                        id={`q-${sIdx}-${qIdx}`}
-                                                        checked={selectedQuestions.some(
-                                                          sq => sq.sectionIndex === sIdx && sq.questionIndex === qIdx
-                                                        )}
-                                                        onCheckedChange={(checked) => {
-                                                          if (checked) {
-                                                            setSelectedQuestions([...selectedQuestions, { sectionIndex: sIdx, questionIndex: qIdx }]);
-                                                          } else {
-                                                            setSelectedQuestions(selectedQuestions.filter(
-                                                              sq => !(sq.sectionIndex === sIdx && sq.questionIndex === qIdx)
-                                                            ));
-                                                          }
-                                                        }}
-                                                      />
-                                                      <Label htmlFor={`q-${sIdx}-${qIdx}`} className="text-sm cursor-pointer flex-1">
-                                                        <span className="font-medium">{section.name}</span> - {q.question}
-                                                      </Label>
-                                                    </div>
-                                                  ))
-                                                )}
-                                              </ScrollArea>
-                                              <div className="flex justify-end gap-2 pt-2">
-                                                <Button variant="ghost" size="sm" onClick={() => setShowSelectQuestionsDialog(false)}>{t("cancel")}</Button>
-                                                <Button size="sm" onClick={() => setShowSelectQuestionsDialog(false)}>Conferma</Button>
-                                              </div>
-                                            </DialogContent>
-                                          </Dialog>
-                                        </div>
-                                      )}
-
                                     <div className="space-y-2">
                                       <label className="text-sm font-medium">{t("feedbackLabel")}</label>
                                       <Textarea
@@ -1687,49 +1583,101 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                         onBlur={(e) => saveFeedback(sectionIndex, questionIndex, e.target.value)}
                                         className="min-h-20"
                                       />
-                                      <p className="text-xs text-muted-foreground">
-                                        {t("feedbackHelp")}
-                                      </p>
                                     </div>
 
-                                    <div className="flex gap-2 pt-2">
-                                      <Button
-                                        variant="default"
-                                        size="sm"
-                                        onClick={() => {
-                                          if (feedbackMode === 'single') {
-                                            applyFeedbackToQuestion(sectionIndex, questionIndex);
-                                          } else {
-                                            if (selectedQuestions.length === 0) {
-                                              toast({
-                                                title: "Nessuna domanda selezionata",
-                                                description: "Seleziona almeno una domanda per applicare il feedback",
-                                                variant: "destructive",
-                                              });
-                                              return;
-                                            }
-                                            applyFeedbackToMultipleQuestions(selectedQuestions, question.feedback || "");
-                                          }
-                                        }}
-                                        disabled={applyingFeedback || !question.feedback || (feedbackMode === 'multiple' && selectedQuestions.length === 0)}
-                                      >
-                                        {applyingFeedback ? (
-                                          <>
-                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                            {t("applying")}
-                                          </>
-                                        ) : (
-                                          t("applyFeedback")
-                                        )}
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => toggleFeedback(sectionIndex, questionIndex)}
-                                      >
-                                        {t("cancel")}
-                                      </Button>
+                                    <div className="space-y-2">
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => setShowSelectQuestionsDialog(true)}
+                                          disabled={!question.feedback}
+                                        >
+                                          Estendi ad altre domande
+                                        </Button>
+                                        <span className="text-xs text-muted-foreground">
+                                          {selectedQuestions.length} selezionate
+                                        </span>
+                                      </div>
+                                      {!question.feedback && (
+                                        <p className="text-xs text-muted-foreground">
+                                          Scrivi prima il feedback per abilitare l'estensione.
+                                        </p>
+                                      )}
                                     </div>
+
+                                    <Button
+                                      onClick={() => applyFeedbackToQuestion(sectionIndex, questionIndex)}
+                                      disabled={applyingFeedback || !question.feedback}
+                                      className="w-full"
+                                    >
+                                      {applyingFeedback ? (
+                                        <>
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                          {t("applyingFeedback")}
+                                        </>
+                                      ) : (
+                                        t("applyFeedback")
+                                      )}
+                                    </Button>
+
+                                    <Dialog open={showSelectQuestionsDialog} onOpenChange={setShowSelectQuestionsDialog}>
+                                      <DialogContent className="max-w-lg">
+                                        <DialogHeader>
+                                          <DialogTitle>Seleziona domande</DialogTitle>
+                                          <DialogDescription>
+                                            Spunta le domande a cui applicare il feedback
+                                          </DialogDescription>
+                                        </DialogHeader>
+                                        <ScrollArea className="h-64 border rounded p-2">
+                                          {sections.map((section, sIdx) =>
+                                            section.questions.map((q, qIdx) => (
+                                              <div key={`${sIdx}-${qIdx}`} className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded">
+                                                <Checkbox
+                                                  id={`q-${sIdx}-${qIdx}`}
+                                                  checked={selectedQuestions.some(
+                                                    sq => sq.sectionIndex === sIdx && sq.questionIndex === qIdx
+                                                  )}
+                                                  onCheckedChange={(checked) => {
+                                                    if (checked) {
+                                                      setSelectedQuestions([...selectedQuestions, { sectionIndex: sIdx, questionIndex: qIdx }]);
+                                                    } else {
+                                                      setSelectedQuestions(selectedQuestions.filter(
+                                                        sq => !(sq.sectionIndex === sIdx && sq.questionIndex === qIdx)
+                                                      ));
+                                                    }
+                                                  }}
+                                                />
+                                                <Label htmlFor={`q-${sIdx}-${qIdx}`} className="text-sm cursor-pointer flex-1">
+                                                  <span className="font-medium">{section.name}</span> - {q.question}
+                                                </Label>
+                                              </div>
+                                            ))
+                                          )}
+                                        </ScrollArea>
+                                        <div className="flex justify-end gap-2 pt-2">
+                                          <Button variant="ghost" size="sm" onClick={() => setShowSelectQuestionsDialog(false)}>{t("cancel")}</Button>
+                                          <Button 
+                                            size="sm" 
+                                            onClick={() => {
+                                              if (selectedQuestions.length === 0) {
+                                                toast({
+                                                  title: "Nessuna domanda selezionata",
+                                                  description: "Seleziona almeno una domanda per applicare il feedback",
+                                                  variant: "destructive",
+                                                });
+                                                return;
+                                              }
+                                              applyFeedbackToMultipleQuestions(selectedQuestions, question.feedback || "");
+                                              setShowSelectQuestionsDialog(false);
+                                              setSelectedQuestions([]);
+                                            }}
+                                          >
+                                            Applica
+                                          </Button>
+                                        </div>
+                                      </DialogContent>
+                                    </Dialog>
                                   </div>
                                 )}
                               </div>
