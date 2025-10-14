@@ -359,14 +359,6 @@ const Dashboard = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleEditSurvey(survey.id)}
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          {t("edit")}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
                           onClick={() => toggleActive(survey.id, survey.is_active)}
                         >
                           {survey.is_active ? (
@@ -374,6 +366,24 @@ const Dashboard = () => {
                           ) : (
                             <><Power className="h-4 w-4 mr-1" />{t("activate")}</>
                           )}
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setDeleteId(survey.id)}
+                          className="col-span-2"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          {t("delete")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditSurvey(survey.id)}
+                          className="col-span-2"
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          {t("edit")}
                         </Button>
                         <Button
                           variant="destructive"
