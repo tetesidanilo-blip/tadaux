@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Upload, FileText, Edit2, Trash2, Check, X, Languages, MessageSquare, Plus, CheckCircle2, Circle, Download, Eye, Save } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,10 +50,9 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
   const [editingQuestion, setEditingQuestion] = useState<{ sectionIndex: number; questionIndex: number } | null>(null);
   const [editedQuestion, setEditedQuestion] = useState<Question | null>(null);
   const [showingFeedback, setShowingFeedback] = useState<{ sectionIndex: number; questionIndex: number } | null>(null);
-  const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
+  const [selectedQuestions, setSelectedQuestions] = useState<Array<{sectionIndex: number, questionIndex: number}>>([]);
   const [applyingFeedback, setApplyingFeedback] = useState(false);
   const [feedbackMode, setFeedbackMode] = useState<'single' | 'multiple'>('single');
-  const [sourceFeedback, setSourceFeedback] = useState<{ sectionIndex: number; questionIndex: number; feedback: string } | null>(null);
   const [addingSectionManually, setAddingSectionManually] = useState(false);
   const [newSectionName, setNewSectionName] = useState("");
   const [addingSectionDialog, setAddingSectionDialog] = useState(false);
@@ -786,10 +786,12 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
   const toggleFeedback = (sectionIndex: number, questionIndex: number) => {
     if (showingFeedback?.sectionIndex === sectionIndex && showingFeedback?.questionIndex === questionIndex) {
       setShowingFeedback(null);
-      setFeedbackMode('single'); // Reset to default mode
+      setFeedbackMode('single');
+      setSelectedQuestions([]);
     } else {
       setShowingFeedback({ sectionIndex, questionIndex });
-      setFeedbackMode('single'); // Reset to default mode when opening new feedback
+      setFeedbackMode('single');
+      setSelectedQuestions([]);
     }
   };
 
@@ -873,74 +875,23 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
     }
   };
 
-  const toggleQuestionSelection = (sectionIndex: number, questionIndex: number) => {
-    const key = `${sectionIndex}-${questionIndex}`;
-    setSelectedQuestions(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(key)) {
-        newSet.delete(key);
-      } else {
-        newSet.add(key);
-      }
-      return newSet;
-    });
-  };
-
-  const selectAllQuestions = () => {
-    const allKeys = sections.flatMap((section, sIdx) =>
-      section.questions.map((_, qIdx) => `${sIdx}-${qIdx}`)
-    );
-    setSelectedQuestions(new Set(allKeys));
-  };
-
-  const deselectAllQuestions = () => {
-    setSelectedQuestions(new Set());
-  };
-
-  const startExtendFeedback = (sectionIndex: number, questionIndex: number) => {
-    const question = sections[sectionIndex].questions[questionIndex];
-    const feedback = question.feedback;
-
-    if (!feedback) {
-      toast({
-        title: t("noFeedback"),
-        description: t("noFeedbackDesc"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSourceFeedback({ sectionIndex, questionIndex, feedback });
-    setFeedbackMode('multiple');
-    // Keep the feedback box open so user can continue editing if needed
-  };
-
-  const cancelFeedbackMode = () => {
-    setFeedbackMode(null);
-    setSelectedQuestions(new Set());
-    setSourceFeedback(null);
-  };
-
-  const applyFeedbackToSelected = async () => {
-    if (!sourceFeedback || selectedQuestions.size === 0) return;
-
+  const applyFeedbackToMultipleQuestions = async (
+    questions: Array<{sectionIndex: number, questionIndex: number}>,
+    feedback: string
+  ) => {
     setApplyingFeedback(true);
-    const totalQuestions = selectedQuestions.size;
     let completed = 0;
 
     try {
-      const selectedArray = Array.from(selectedQuestions);
-      
-      for (const key of selectedArray) {
-        const [sIdx, qIdx] = key.split('-').map(Number);
-        const question = sections[sIdx].questions[qIdx];
-
+      for (const {sectionIndex, questionIndex} of questions) {
         try {
+          const question = sections[sectionIndex].questions[questionIndex];
+          
           const { data, error } = await supabase.functions.invoke("generate-survey", {
             body: { 
               refineQuestion: {
                 question: question.question,
-                feedback: sourceFeedback.feedback,
+                feedback: feedback,
                 type: question.type,
                 options: question.options
               },
@@ -952,12 +903,12 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
 
           const refinedQuestion = data.questions[0];
 
-          setSections(prev => prev.map((section, sectionIdx) => {
-            if (sectionIdx === sIdx) {
+          setSections(prev => prev.map((section, sIdx) => {
+            if (sIdx === sectionIndex) {
               return {
                 ...section,
-                questions: section.questions.map((q, questionIdx) => 
-                  questionIdx === qIdx 
+                questions: section.questions.map((q, qIdx) => 
+                  qIdx === questionIndex 
                     ? { ...refinedQuestion, section: section.name, feedback: q.feedback }
                     : q
                 )
@@ -968,7 +919,12 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
 
           completed++;
         } catch (error) {
-          console.error(`Error refining question ${key}:`, error);
+          console.error(`Error applying feedback to question ${sectionIndex}-${questionIndex}:`, error);
+          toast({
+            title: t("generationFailed"),
+            description: `Errore sulla domanda ${questionIndex + 1}`,
+            variant: "destructive",
+          });
         }
       }
 
@@ -977,9 +933,12 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         description: `${completed} ${t("questionsUpdated")}`,
       });
 
-      cancelFeedbackMode();
+      setSelectedQuestions([]);
+      if (showingFeedback) {
+        toggleFeedback(showingFeedback.sectionIndex, showingFeedback.questionIndex);
+      }
     } catch (error) {
-      console.error("Error applying feedback to selected questions:", error);
+      console.error("Error applying feedback to multiple questions:", error);
       toast({
         title: t("generationFailed"),
         description: t("failedToGenerate"),
@@ -1332,21 +1291,11 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                       {section.questions.map((question, questionIndex) => {
                         const isEditing = editingQuestion?.sectionIndex === sectionIndex && 
                                          editingQuestion?.questionIndex === questionIndex;
-                        const questionKey = `${sectionIndex}-${questionIndex}`;
-                        const isSelected = selectedQuestions.has(questionKey);
-                        const isSourceQuestion = sourceFeedback?.sectionIndex === sectionIndex && 
-                                                sourceFeedback?.questionIndex === questionIndex;
                         
                         return (
                           <Card 
                             key={questionIndex} 
-                            className={`p-4 border-l-4 transition-all ${
-                              isSelected 
-                                ? 'border-l-primary bg-primary/5 shadow-md' 
-                                : isSourceQuestion && feedbackMode === 'multiple'
-                                ? 'border-l-secondary bg-secondary/10'
-                                : 'border-l-primary'
-                            }`}
+                            className="p-4 border-l-4 border-l-primary transition-all"
                           >
                             {isEditing && editedQuestion ? (
                               <div className="space-y-4">
@@ -1431,23 +1380,6 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                               </div>
                             ) : (
                               <div className="space-y-3">
-                                <div className="flex gap-3">
-                                  {feedbackMode === 'multiple' && !isSourceQuestion && (
-                                    <button
-                                      onClick={() => toggleQuestionSelection(sectionIndex, questionIndex)}
-                                      className="mt-1 flex-shrink-0"
-                                    >
-                                      {isSelected ? (
-                                        <CheckCircle2 className="w-6 h-6 text-primary" />
-                                      ) : (
-                                        <Circle className="w-6 h-6 text-muted-foreground hover:text-primary transition-colors" />
-                                      )}
-                                    </button>
-                                  )}
-                                  {feedbackMode === 'multiple' && isSourceQuestion && (
-                                    <div className="w-6 h-6 mt-1 flex-shrink-0" />
-                                  )}
-                                  <div className="flex-1 space-y-4">
                                     <div className="flex items-start justify-between">
                                       <div className="flex items-start gap-3 flex-1">
                                         <h5 className="font-medium text-base flex-1">
@@ -1458,13 +1390,6 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                         </h5>
                                       </div>
                                       <div className="flex gap-2 items-center">
-                                        {feedbackMode === 'multiple' && isSourceQuestion && (
-                                          <span className="text-xs bg-secondary/20 text-secondary-foreground px-2 py-1 rounded font-medium">
-                                            {t("sourceQuestion")}
-                                          </span>
-                                        )}
-                                        {feedbackMode !== 'multiple' && (
-                                          <>
                                             <Button
                                               variant="ghost"
                                               size="sm"
@@ -1479,8 +1404,6 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                             >
                                               <Trash2 className="w-4 h-4" />
                                             </Button>
-                                          </>
-                                        )}
                                       </div>
                                     </div>
 
@@ -1652,11 +1575,9 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                           </Button>
                                         </div>
                                       )}
-                                    </div>
                                   </div>
-                                </div>
                                 
-                                {showingFeedback?.sectionIndex === sectionIndex && 
+                                {showingFeedback?.sectionIndex === sectionIndex &&
                                 showingFeedback?.questionIndex === questionIndex && (
                                   <div className="ml-11 bg-muted/50 p-4 rounded-lg space-y-3">
                                     <div className="space-y-2">
@@ -1665,7 +1586,12 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                       </label>
                                       <RadioGroup 
                                         value={feedbackMode}
-                                        onValueChange={(value) => setFeedbackMode(value as 'single' | 'multiple')}
+                                        onValueChange={(value) => {
+                                          setFeedbackMode(value as 'single' | 'multiple');
+                                          if (value === 'single') {
+                                            setSelectedQuestions([]);
+                                          }
+                                        }}
                                         className="flex flex-col space-y-2"
                                       >
                                         <div className="flex items-center space-x-2">
@@ -1695,6 +1621,40 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                       </RadioGroup>
                                     </div>
                                     
+                                    {feedbackMode === 'multiple' && (
+                                      <div className="space-y-2">
+                                        <label className="text-sm font-medium">
+                                          Seleziona le domande a cui applicare il feedback:
+                                        </label>
+                                        <ScrollArea className="h-64 border rounded p-2">
+                                          {sections.map((section, sIdx) =>
+                                            section.questions.map((q, qIdx) => (
+                                              <div key={`${sIdx}-${qIdx}`} className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded">
+                                                <Checkbox
+                                                  id={`q-${sIdx}-${qIdx}`}
+                                                  checked={selectedQuestions.some(
+                                                    sq => sq.sectionIndex === sIdx && sq.questionIndex === qIdx
+                                                  )}
+                                                  onCheckedChange={(checked) => {
+                                                    if (checked) {
+                                                      setSelectedQuestions([...selectedQuestions, { sectionIndex: sIdx, questionIndex: qIdx }]);
+                                                    } else {
+                                                      setSelectedQuestions(selectedQuestions.filter(
+                                                        sq => !(sq.sectionIndex === sIdx && sq.questionIndex === qIdx)
+                                                      ));
+                                                    }
+                                                  }}
+                                                />
+                                                <Label htmlFor={`q-${sIdx}-${qIdx}`} className="text-sm cursor-pointer flex-1">
+                                                  <span className="font-medium">{section.name}</span> - {q.question}
+                                                </Label>
+                                              </div>
+                                            ))
+                                          )}
+                                        </ScrollArea>
+                                      </div>
+                                    )}
+                                    
                                     <div className="space-y-2">
                                       <label className="text-sm font-medium">{t("feedbackLabel")}</label>
                                       <Textarea
@@ -1716,10 +1676,18 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                           if (feedbackMode === 'single') {
                                             applyFeedbackToQuestion(sectionIndex, questionIndex);
                                           } else {
-                                            startExtendFeedback(sectionIndex, questionIndex);
+                                            if (selectedQuestions.length === 0) {
+                                              toast({
+                                                title: "Nessuna domanda selezionata",
+                                                description: "Seleziona almeno una domanda per applicare il feedback",
+                                                variant: "destructive",
+                                              });
+                                              return;
+                                            }
+                                            applyFeedbackToMultipleQuestions(selectedQuestions, question.feedback || "");
                                           }
                                         }}
-                                        disabled={applyingFeedback || !question.feedback}
+                                        disabled={applyingFeedback || !question.feedback || (feedbackMode === 'multiple' && selectedQuestions.length === 0)}
                                       >
                                         {applyingFeedback ? (
                                           <>
@@ -1839,53 +1807,6 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         </div>
       </div>
 
-      {feedbackMode === 'multiple' && (
-        <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg p-4 z-50">
-          <div className="container max-w-4xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <p className="font-medium">
-                {selectedQuestions.size} {t("questionsSelected")}
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={selectAllQuestions}
-              >
-                {t("selectAll")}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={deselectAllQuestions}
-              >
-                {t("deselectAll")}
-              </Button>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                onClick={cancelFeedbackMode}
-                disabled={applyingFeedback}
-              >
-                {t("cancel")}
-              </Button>
-              <Button
-                onClick={applyFeedbackToSelected}
-                disabled={selectedQuestions.size === 0 || applyingFeedback}
-              >
-                {applyingFeedback ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {t("applyingFeedback")}
-                  </>
-                 ) : (
-                  t("applyFeedback")
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Dialog per aggiungere nuova sezione con AI */}
       <Dialog open={addingSectionDialog} onOpenChange={setAddingSectionDialog}>
