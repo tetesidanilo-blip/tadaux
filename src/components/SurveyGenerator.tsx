@@ -67,6 +67,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
   const [newModelDescription, setNewModelDescription] = useState("");
   const [editingSectionName, setEditingSectionName] = useState<number | null>(null);
   const [editedSectionName, setEditedSectionName] = useState("");
+  const [showSelectQuestionsDialog, setShowSelectQuestionsDialog] = useState(false);
   const { toast } = useToast();
 
   // Autosave effect - saves after every change to sections
@@ -1621,40 +1622,63 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                       </RadioGroup>
                                     </div>
                                     
-                                    {feedbackMode === 'multiple' && (
-                                      <div className="space-y-2">
-                                        <label className="text-sm font-medium">
-                                          Seleziona le domande a cui applicare il feedback:
-                                        </label>
-                                        <ScrollArea className="h-64 border rounded p-2">
-                                          {sections.map((section, sIdx) =>
-                                            section.questions.map((q, qIdx) => (
-                                              <div key={`${sIdx}-${qIdx}`} className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded">
-                                                <Checkbox
-                                                  id={`q-${sIdx}-${qIdx}`}
-                                                  checked={selectedQuestions.some(
-                                                    sq => sq.sectionIndex === sIdx && sq.questionIndex === qIdx
-                                                  )}
-                                                  onCheckedChange={(checked) => {
-                                                    if (checked) {
-                                                      setSelectedQuestions([...selectedQuestions, { sectionIndex: sIdx, questionIndex: qIdx }]);
-                                                    } else {
-                                                      setSelectedQuestions(selectedQuestions.filter(
-                                                        sq => !(sq.sectionIndex === sIdx && sq.questionIndex === qIdx)
-                                                      ));
-                                                    }
-                                                  }}
-                                                />
-                                                <Label htmlFor={`q-${sIdx}-${qIdx}`} className="text-sm cursor-pointer flex-1">
-                                                  <span className="font-medium">{section.name}</span> - {q.question}
-                                                </Label>
+                                      {feedbackMode === 'multiple' && (
+                                        <div className="space-y-2">
+                                          <label className="text-sm font-medium">
+                                            Seleziona a quali domande applicare il feedback:
+                                          </label>
+                                          <div className="flex items-center gap-2">
+                                            <Button variant="outline" size="sm" onClick={() => setShowSelectQuestionsDialog(true)}>
+                                              Scegli domande
+                                            </Button>
+                                            <span className="text-xs text-muted-foreground">
+                                              {selectedQuestions.length} selezionate
+                                            </span>
+                                          </div>
+
+                                          <Dialog open={showSelectQuestionsDialog} onOpenChange={setShowSelectQuestionsDialog}>
+                                            <DialogContent className="max-w-lg">
+                                              <DialogHeader>
+                                                <DialogTitle>Seleziona domande</DialogTitle>
+                                                <DialogDescription>
+                                                  Spunta le domande a cui applicare il feedback
+                                                </DialogDescription>
+                                              </DialogHeader>
+                                              <ScrollArea className="h-64 border rounded p-2">
+                                                {sections.map((section, sIdx) =>
+                                                  section.questions.map((q, qIdx) => (
+                                                    <div key={`${sIdx}-${qIdx}`} className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded">
+                                                      <Checkbox
+                                                        id={`q-${sIdx}-${qIdx}`}
+                                                        checked={selectedQuestions.some(
+                                                          sq => sq.sectionIndex === sIdx && sq.questionIndex === qIdx
+                                                        )}
+                                                        onCheckedChange={(checked) => {
+                                                          if (checked) {
+                                                            setSelectedQuestions([...selectedQuestions, { sectionIndex: sIdx, questionIndex: qIdx }]);
+                                                          } else {
+                                                            setSelectedQuestions(selectedQuestions.filter(
+                                                              sq => !(sq.sectionIndex === sIdx && sq.questionIndex === qIdx)
+                                                            ));
+                                                          }
+                                                        }}
+                                                      />
+                                                      <Label htmlFor={`q-${sIdx}-${qIdx}`} className="text-sm cursor-pointer flex-1">
+                                                        <span className="font-medium">{section.name}</span> - {q.question}
+                                                      </Label>
+                                                    </div>
+                                                  ))
+                                                )}
+                                              </ScrollArea>
+                                              <div className="flex justify-end gap-2 pt-2">
+                                                <Button variant="ghost" size="sm" onClick={() => setShowSelectQuestionsDialog(false)}>{t("cancel")}</Button>
+                                                <Button size="sm" onClick={() => setShowSelectQuestionsDialog(false)}>Conferma</Button>
                                               </div>
-                                            ))
-                                          )}
-                                        </ScrollArea>
-                                      </div>
-                                    )}
-                                    
+                                            </DialogContent>
+                                          </Dialog>
+                                        </div>
+                                      )}
+
                                     <div className="space-y-2">
                                       <label className="text-sm font-medium">{t("feedbackLabel")}</label>
                                       <Textarea
