@@ -31,18 +31,19 @@ interface Section {
 
 interface SurveyGeneratorProps {
   onBack: () => void;
+  editingSurvey?: any;
 }
 
-export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
+export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps) => {
   const { language: uiLanguage, setLanguage: setUiLanguage, t } = useLanguage();
   const [description, setDescription] = useState("");
   const [sectionName, setSectionName] = useState("");
-  const [language, setLanguage] = useState("it");
+  const [language, setLanguage] = useState(editingSurvey?.language || "it");
   const [generatingMore, setGeneratingMore] = useState<number | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [sections, setSections] = useState<Section[]>([]);
+  const [sections, setSections] = useState<Section[]>(editingSurvey?.sections || []);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(editingSurvey?.id || null);
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<{ sectionIndex: number; questionIndex: number } | null>(null);
@@ -2113,6 +2114,7 @@ export const SurveyGenerator = ({ onBack }: SurveyGeneratorProps) => {
         onOpenChange={setShowSaveDialog}
         sections={sections}
         surveyLanguage={language}
+        editingSurveyId={editingSurvey?.id}
       />
     </div>
   );

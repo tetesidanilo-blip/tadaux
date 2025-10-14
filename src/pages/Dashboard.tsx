@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Calendar, Copy, ExternalLink, Eye, Power, PowerOff, Trash2, Plus, BarChart, Clock, Mail, QrCode } from "lucide-react";
+import { Calendar, Copy, ExternalLink, Eye, Power, PowerOff, Trash2, Plus, BarChart, Clock, Mail, QrCode, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { format, addDays } from "date-fns";
 import { SurveyGenerator } from "@/components/SurveyGenerator";
@@ -34,6 +34,7 @@ const Dashboard = () => {
   const [extendSurveyId, setExtendSurveyId] = useState<string | null>(null);
   const [newExpiryDays, setNewExpiryDays] = useState<number>(7);
   const [qrCodeSurvey, setQrCodeSurvey] = useState<string | null>(null);
+  const [editingSurvey, setEditingSurvey] = useState<any | null>(null);
   
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -154,6 +155,24 @@ const Dashboard = () => {
     return new Date(expiresAt) < new Date();
   };
 
+  const handleEditSurvey = async (surveyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("surveys")
+        .select("*")
+        .eq("id", surveyId)
+        .single();
+
+      if (error) throw error;
+
+      setEditingSurvey(data);
+      setShowGenerator(true);
+    } catch (error) {
+      console.error("Error loading survey:", error);
+      toast.error("Failed to load survey for editing");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -163,7 +182,14 @@ const Dashboard = () => {
   }
 
   if (showGenerator) {
-    return <SurveyGenerator onBack={() => setShowGenerator(false)} />;
+    return <SurveyGenerator 
+      onBack={() => {
+        setShowGenerator(false);
+        setEditingSurvey(null);
+        loadSurveys();
+      }} 
+      editingSurvey={editingSurvey}
+    />;
   }
 
   const totalResponses = surveys.reduce((sum, s) => sum + (s.response_count || 0), 0);
@@ -329,6 +355,14 @@ const Dashboard = () => {
                         >
                           <Eye className="h-4 w-4 mr-1" />
                           {t("responses")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditSurvey(survey.id)}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          {t("edit")}
                         </Button>
                         <Button
                           variant="outline"

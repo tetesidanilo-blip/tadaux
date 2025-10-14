@@ -26,9 +26,10 @@ interface SaveSurveyDialogProps {
   onOpenChange: (open: boolean) => void;
   sections: Section[];
   surveyLanguage: string;
+  editingSurveyId?: string | null;
 }
 
-export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage }: SaveSurveyDialogProps) => {
+export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage, editingSurveyId }: SaveSurveyDialogProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [expiresAt, setExpiresAt] = useState<Date | undefined>();
@@ -65,22 +66,19 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage 
     setSaving(true);
 
     try {
-      // Check if there's a draft to update
-      const { data: existingDrafts } = await supabase
-        .from('surveys')
-        .select('id, share_token')
-        .eq('user_id', user.id)
-        .eq('status', 'draft')
-        .order('updated_at', { ascending: false })
-        .limit(1);
-
       let shareToken: string;
       let surveyId: string | null = null;
 
-      if (existingDrafts && existingDrafts.length > 0) {
-        // Update existing draft to published
-        shareToken = existingDrafts[0].share_token;
-        surveyId = existingDrafts[0].id;
+      // If we're editing an existing survey
+      if (editingSurveyId) {
+        const { data: existingSurvey } = await supabase
+          .from('surveys')
+          .select('share_token')
+          .eq('id', editingSurveyId)
+          .single();
+
+        shareToken = existingSurvey?.share_token || crypto.randomUUID();
+        surveyId = editingSurveyId;
 
         const { error } = await supabase
           .from("surveys")
@@ -92,34 +90,66 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage 
             is_active: true,
             status: 'published',
             expires_at: expiresAt ? expiresAt.toISOString() : null,
-            expired_message: expiredMessage.trim() || null
+            expired_message: expiredMessage.trim() || null,
+            updated_at: new Date().toISOString()
           })
           .eq('id', surveyId);
 
         if (error) throw error;
       } else {
-        // Create new published survey
-        shareToken = crypto.randomUUID();
+        // Check if there's a draft to update
+        const { data: existingDrafts } = await supabase
+          .from('surveys')
+          .select('id, share_token')
+          .eq('user_id', user.id)
+          .eq('status', 'draft')
+          .order('updated_at', { ascending: false })
+          .limit(1);
 
-        const { data, error } = await supabase
-          .from("surveys")
-          .insert([{
-            user_id: user.id,
-            title: title.trim(),
-            description: description.trim() || null,
-            sections: sections as any,
-            language: surveyLanguage,
-            share_token: shareToken,
-            is_active: true,
-            status: 'published',
-            expires_at: expiresAt ? expiresAt.toISOString() : null,
-            expired_message: expiredMessage.trim() || null
-          }])
-          .select()
-          .single();
+        if (existingDrafts && existingDrafts.length > 0) {
+          // Update existing draft to published
+          shareToken = existingDrafts[0].share_token;
+          surveyId = existingDrafts[0].id;
 
-        if (error) throw error;
-        if (data) surveyId = data.id;
+          const { error } = await supabase
+            .from("surveys")
+            .update({
+              title: title.trim(),
+              description: description.trim() || null,
+              sections: sections as any,
+              language: surveyLanguage,
+              is_active: true,
+              status: 'published',
+              expires_at: expiresAt ? expiresAt.toISOString() : null,
+              expired_message: expiredMessage.trim() || null
+            })
+            .eq('id', surveyId);
+
+          if (error) throw error;
+        } else {
+          // Create new published survey
+          shareToken = crypto.randomUUID();
+
+          const { data, error } = await supabase
+            .from("surveys")
+            .insert([{
+              user_id: user.id,
+              title: title.trim(),
+              description: description.trim() || null,
+              sections: sections as any,
+              language: surveyLanguage,
+              share_token: shareToken,
+              is_active: true,
+              status: 'published',
+              expires_at: expiresAt ? expiresAt.toISOString() : null,
+              expired_message: expiredMessage.trim() || null
+            }])
+            .select()
+            .single();
+
+          if (error) throw error;
+          if (data) surveyId = data.id;
+        }
       }
 
       const surveyLink = `${window.location.origin}/survey/${shareToken}`;
