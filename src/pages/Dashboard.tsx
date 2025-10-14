@@ -368,6 +368,14 @@ const Dashboard = () => {
                           )}
                         </Button>
                         <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setExtendSurveyId(survey.id)}
+                        >
+                          <Clock className="h-4 w-4 mr-1" />
+                          {t("extendExpiry")}
+                        </Button>
+                        <Button
                           variant="destructive"
                           size="sm"
                           onClick={() => setDeleteId(survey.id)}
@@ -384,15 +392,6 @@ const Dashboard = () => {
                         >
                           <Edit className="h-4 w-4 mr-1" />
                           {t("edit")}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setExtendSurveyId(survey.id)}
-                          className="col-span-2"
-                        >
-                          <Clock className="h-4 w-4 mr-1" />
-                          {t("extendExpiry")}
                         </Button>
                       </div>
                     </div>
