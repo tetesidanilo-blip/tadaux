@@ -376,14 +376,6 @@ const Dashboard = () => {
                           )}
                         </Button>
                         <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setExtendSurveyId(survey.id)}
-                        >
-                          <Clock className="h-4 w-4 mr-1" />
-                          {t("extendExpiry")}
-                        </Button>
-                        <Button
                           variant="destructive"
                           size="sm"
                           onClick={() => setDeleteId(survey.id)}
@@ -391,6 +383,15 @@ const Dashboard = () => {
                         >
                           <Trash2 className="h-4 w-4 mr-1" />
                           {t("delete")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setExtendSurveyId(survey.id)}
+                          className="col-span-2"
+                        >
+                          <Clock className="h-4 w-4 mr-1" />
+                          {t("extendExpiry")}
                         </Button>
                       </div>
                     </div>
