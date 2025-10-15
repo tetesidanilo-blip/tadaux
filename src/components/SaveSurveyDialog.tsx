@@ -57,6 +57,42 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
     }
   };
 
+  const ensureUniqueTitle = async (baseTitle: string, userId: string, currentSurveyId?: string | null): Promise<string> => {
+    // Query to find all user surveys with similar titles
+    const { data: existingSurveys } = await supabase
+      .from('surveys')
+      .select('title, id')
+      .eq('user_id', userId);
+    
+    if (!existingSurveys) return baseTitle;
+    
+    // Filter excluding the current survey (if editing)
+    const otherTitles = existingSurveys
+      .filter(s => currentSurveyId ? s.id !== currentSurveyId : true)
+      .map(s => s.title.toLowerCase());
+    
+    // If the base title doesn't exist, use it directly
+    if (!otherTitles.includes(baseTitle.toLowerCase())) {
+      return baseTitle;
+    }
+    
+    // Find the highest number already used for this title
+    const escapedTitle = baseTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`^${escapedTitle} \\((\\d+)\\)$`, 'i');
+    let maxNumber = 0;
+    
+    otherTitles.forEach(title => {
+      const match = title.match(pattern);
+      if (match) {
+        const num = parseInt(match[1]);
+        if (num > maxNumber) maxNumber = num;
+      }
+    });
+    
+    // Return the new title with the next number
+    return `${baseTitle} (${maxNumber + 1})`;
+  };
+
   const handleSave = async () => {
     if (!title.trim()) {
       toast.error(t("titleRequired"), {
@@ -73,6 +109,16 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
     setSaving(true);
 
     try {
+      // Ensure unique title
+      const uniqueTitle = await ensureUniqueTitle(title.trim(), user.id, editingSurveyId);
+      
+      // Notify user if title was changed
+      if (uniqueTitle !== title.trim()) {
+        toast.info("Titolo modificato", {
+          description: `Un survey con questo nome esiste già. Rinominato in "${uniqueTitle}"`
+        });
+      }
+
       let shareToken: string;
       let surveyId: string | null = null;
 
@@ -90,7 +136,7 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
         const { error } = await supabase
           .from("surveys")
           .update({
-            title: title.trim(),
+            title: uniqueTitle,
             description: description.trim() || null,
             sections: sections as any,
             language: surveyLanguage,
@@ -121,7 +167,7 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
           const { error } = await supabase
             .from("surveys")
             .update({
-              title: title.trim(),
+              title: uniqueTitle,
               description: description.trim() || null,
               sections: sections as any,
               language: surveyLanguage,
@@ -141,7 +187,7 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
             .from("surveys")
             .insert([{
               user_id: user.id,
-              title: title.trim(),
+              title: uniqueTitle,
               description: description.trim() || null,
               sections: sections as any,
               language: surveyLanguage,
