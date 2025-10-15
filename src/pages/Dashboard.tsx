@@ -5,6 +5,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -35,6 +36,8 @@ const Dashboard = () => {
   const [newExpiryDays, setNewExpiryDays] = useState<number>(7);
   const [qrCodeSurvey, setQrCodeSurvey] = useState<string | null>(null);
   const [editingSurvey, setEditingSurvey] = useState<any | null>(null);
+  const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
+  const [editingTitleValue, setEditingTitleValue] = useState("");
   
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -173,6 +176,45 @@ const Dashboard = () => {
     }
   };
 
+  const handleStartEditTitle = (id: string, currentTitle: string) => {
+    setEditingTitleId(id);
+    setEditingTitleValue(currentTitle || "");
+  };
+
+  const handleSaveTitle = async (id: string) => {
+    const trimmedTitle = editingTitleValue.trim();
+    
+    if (!trimmedTitle) {
+      toast.error(t("titleRequired"));
+      setEditingTitleId(null);
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("surveys")
+        .update({ title: trimmedTitle })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setSurveys(surveys.map(s => 
+        s.id === id ? { ...s, title: trimmedTitle } : s
+      ));
+      
+      toast.success(t("titleUpdated") || "Titolo aggiornato");
+      setEditingTitleId(null);
+    } catch (error) {
+      console.error("Error updating title:", error);
+      toast.error("Failed to update title");
+    }
+  };
+
+  const handleCancelEditTitle = () => {
+    setEditingTitleId(null);
+    setEditingTitleValue("");
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -260,7 +302,32 @@ const Dashboard = () => {
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <CardTitle className="text-xl mb-2">{survey.title || t("untitledDraft")}</CardTitle>
+                        {editingTitleId === survey.id ? (
+                          <Input
+                            value={editingTitleValue}
+                            onChange={(e) => setEditingTitleValue(e.target.value)}
+                            onBlur={() => handleSaveTitle(survey.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleSaveTitle(survey.id);
+                              }
+                              if (e.key === 'Escape') {
+                                e.preventDefault();
+                                handleCancelEditTitle();
+                              }
+                            }}
+                            autoFocus
+                            className="text-xl font-semibold mb-2 h-auto py-1"
+                          />
+                        ) : (
+                          <CardTitle 
+                            className="text-xl mb-2 cursor-pointer hover:text-primary transition-colors"
+                            onClick={() => handleStartEditTitle(survey.id, survey.title)}
+                          >
+                            {survey.title || t("untitledDraft")}
+                          </CardTitle>
+                        )}
                         <CardDescription className="line-clamp-2">
                           {survey.description || "No description"}
                         </CardDescription>

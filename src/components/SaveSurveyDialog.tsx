@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -39,6 +39,13 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
   const { user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+
+  // Auto-populate title with first section name when dialog opens
+  useEffect(() => {
+    if (open && !title && sections.length > 0 && sections[0].name) {
+      setTitle(sections[0].name);
+    }
+  }, [open, sections]);
 
   const handleQuickExpiration = (days: number | null) => {
     if (days === null) {
