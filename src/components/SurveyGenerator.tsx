@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { SaveSurveyDialog } from "./SaveSurveyDialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Question {
   question: string;
@@ -39,6 +40,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
   const [description, setDescription] = useState("");
   const [sectionName, setSectionName] = useState("");
   const [language, setLanguage] = useState(editingSurvey?.language || "it");
+  const [questionCount, setQuestionCount] = useState<number | null>(null);
   const [generatingMore, setGeneratingMore] = useState<number | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [sections, setSections] = useState<Section[]>(editingSurvey?.sections || []);
@@ -58,11 +60,13 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [newSectionDescription, setNewSectionDescription] = useState("");
   const [newSectionLanguage, setNewSectionLanguage] = useState("it");
+  const [newSectionQuestionCount, setNewSectionQuestionCount] = useState<number | null>(null);
   const [generatingNewSection, setGeneratingNewSection] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showMoreQuestionsDialog, setShowMoreQuestionsDialog] = useState(false);
   const [currentSectionForMore, setCurrentSectionForMore] = useState<number | null>(null);
   const [newModelDescription, setNewModelDescription] = useState("");
+  const [moreQuestionsCount, setMoreQuestionsCount] = useState<number | null>(null);
   const [editingSectionName, setEditingSectionName] = useState<number | null>(null);
   const [editedSectionName, setEditedSectionName] = useState("");
   const [showSelectQuestionsDialog, setShowSelectQuestionsDialog] = useState(false);
@@ -288,7 +292,8 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         body: { 
           description: uploadedFile ? `Document: ${uploadedFile.name}` : description,
           hasDocument: !!uploadedFile,
-          language 
+          language,
+          questionCount: questionCount
         },
       });
 
@@ -307,6 +312,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
       setDescription("");
       setSectionName("");
       setUploadedFile(null);
+      setQuestionCount(null);
 
       toast({
         title: t("sectionAdded"),
@@ -683,7 +689,8 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         body: { 
           description: description,
           hasDocument: false,
-          language 
+          language,
+          questionCount: moreQuestionsCount
         },
       });
 
@@ -699,6 +706,8 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
           ? { ...s, questions: [...s.questions, ...newQuestions] }
           : s
       ));
+
+      setMoreQuestionsCount(null);
 
       toast({
         title: t("questionsAdded"),
@@ -995,7 +1004,8 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         body: { 
           description: newSectionDescription,
           hasDocument: false,
-          language: newSectionLanguage 
+          language: newSectionLanguage,
+          questionCount: newSectionQuestionCount
         },
       });
 
@@ -1014,6 +1024,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
       setNewSectionTitle("");
       setNewSectionDescription("");
       setNewSectionLanguage("it");
+      setNewSectionQuestionCount(null);
       setAddingSectionDialog(false);
 
       toast({
@@ -1160,6 +1171,26 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                 <p className="text-xs text-muted-foreground mt-2">
                   {t("supportsFiles")} (PDF, Word, CSV)
                 </p>
+              </div>
+
+              <div>
+                <Label htmlFor="questionCount">Numero di domande</Label>
+                <Select 
+                  value={questionCount === null ? "auto" : questionCount.toString()} 
+                  onValueChange={(value) => setQuestionCount(value === "auto" ? null : parseInt(value))}
+                >
+                  <SelectTrigger id="questionCount">
+                    <SelectValue placeholder="-- Automatico (AI decide)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">-- Automatico (AI decide)</SelectItem>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
+                      <SelectItem key={num} value={num.toString()}>
+                        {num} {num === 1 ? 'domanda' : 'domande'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <Button
@@ -1840,6 +1871,26 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
               />
             </div>
 
+            <div>
+              <Label htmlFor="newSectionQuestionCount">Numero di domande</Label>
+              <Select 
+                value={newSectionQuestionCount === null ? "auto" : newSectionQuestionCount.toString()} 
+                onValueChange={(value) => setNewSectionQuestionCount(value === "auto" ? null : parseInt(value))}
+              >
+                <SelectTrigger id="newSectionQuestionCount">
+                  <SelectValue placeholder="-- Automatico (AI decide)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">-- Automatico (AI decide)</SelectItem>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
+                    <SelectItem key={num} value={num.toString()}>
+                      {num} {num === 1 ? 'domanda' : 'domande'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="flex gap-2 justify-end pt-2">
               <Button
                 variant="ghost"
@@ -1847,6 +1898,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                   setAddingSectionDialog(false);
                   setNewSectionTitle("");
                   setNewSectionDescription("");
+                  setNewSectionQuestionCount(null);
                   setNewSectionLanguage("it");
                 }}
                 disabled={generatingNewSection}
@@ -1898,12 +1950,33 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
               />
             </div>
 
+            <div>
+              <Label htmlFor="moreQuestionsCount">Numero di domande</Label>
+              <Select 
+                value={moreQuestionsCount === null ? "auto" : moreQuestionsCount.toString()} 
+                onValueChange={(value) => setMoreQuestionsCount(value === "auto" ? null : parseInt(value))}
+              >
+                <SelectTrigger id="moreQuestionsCount">
+                  <SelectValue placeholder="-- Automatico (AI decide)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">-- Automatico (AI decide)</SelectItem>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
+                    <SelectItem key={num} value={num.toString()}>
+                      {num} {num === 1 ? 'domanda' : 'domande'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="flex gap-3 justify-end">
               <Button
                 variant="outline"
                 onClick={() => {
                   setShowMoreQuestionsDialog(false);
                   setNewModelDescription("");
+                  setMoreQuestionsCount(null);
                 }}
               >
                 Annulla

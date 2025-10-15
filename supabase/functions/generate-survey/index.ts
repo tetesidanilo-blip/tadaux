@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { description, hasDocument, language = 'en', refineQuestion } = await req.json();
+    const { description, hasDocument, language = 'en', refineQuestion, questionCount } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
@@ -63,6 +63,10 @@ User feedback: "${refineQuestion.feedback}"
 Refine this question based on the feedback. Keep it in ${targetLanguage}.`;
     } else {
       // Mode: generate new questions
+      const questionInstruction = questionCount 
+        ? `Generate EXACTLY ${questionCount} relevant question${questionCount > 1 ? 's' : ''} based on the input.`
+        : `Generate 5-10 relevant questions based on the input.`;
+
       systemPrompt = `You are an expert survey designer. Generate professional survey questions based on the user's requirements.
 
 IMPORTANT: Generate ALL questions and options in ${targetLanguage}.
@@ -73,7 +77,7 @@ Return a JSON object with a "questions" array. Each question should have:
 - options: Array of options (in ${targetLanguage}, only for multiple_choice, checkbox, or dropdown)
 - required: Boolean indicating if the question is required
 
-Generate 5-10 relevant questions based on the input.`;
+${questionInstruction}`;
 
       userPrompt = hasDocument 
         ? `Convert this document content into survey questions in ${targetLanguage}: ${description}\n\nExtract key topics and create survey questions that would gather feedback or information about the document's subject matter.`
