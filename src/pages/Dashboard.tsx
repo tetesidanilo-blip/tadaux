@@ -260,7 +260,7 @@ const Dashboard = () => {
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <CardTitle className="text-xl mb-2">{survey.title}</CardTitle>
+                        <CardTitle className="text-xl mb-2">{survey.title || t("untitledDraft")}</CardTitle>
                         <CardDescription className="line-clamp-2">
                           {survey.description || "No description"}
                         </CardDescription>
