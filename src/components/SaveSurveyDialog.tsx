@@ -57,6 +57,8 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
     }
   };
 
+  const normalize = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+
   const ensureUniqueTitle = async (baseTitle: string, userId: string, currentSurveyId?: string | null): Promise<string> => {
     // Query to find all user surveys with similar titles
     const { data: existingSurveys } = await supabase
@@ -66,13 +68,13 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
     
     if (!existingSurveys) return baseTitle;
     
-    // Filter excluding the current survey (if editing)
-    const otherTitles = existingSurveys
+    const baseNorm = normalize(baseTitle);
+    const others = existingSurveys
       .filter(s => currentSurveyId ? s.id !== currentSurveyId : true)
-      .map(s => s.title.toLowerCase());
+      .map(s => ({ id: s.id, title: s.title, norm: normalize(s.title) }));
     
     // If the base title doesn't exist, use it directly
-    if (!otherTitles.includes(baseTitle.toLowerCase())) {
+    if (!others.some(o => o.norm === baseNorm)) {
       return baseTitle;
     }
     
@@ -81,8 +83,8 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
     const pattern = new RegExp(`^${escapedTitle} \\((\\d+)\\)$`, 'i');
     let maxNumber = 0;
     
-    otherTitles.forEach(title => {
-      const match = title.match(pattern);
+    others.forEach(o => {
+      const match = o.title.match(pattern);
       if (match) {
         const num = parseInt(match[1]);
         if (num > maxNumber) maxNumber = num;

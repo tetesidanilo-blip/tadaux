@@ -181,6 +181,41 @@ const Dashboard = () => {
     setEditingTitleValue(currentTitle || "");
   };
 
+  const normalize = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+
+  const ensureUniqueTitle = async (baseTitle: string, userId: string, currentSurveyId?: string): Promise<string> => {
+    const { data: existingSurveys } = await supabase
+      .from("surveys")
+      .select("id, title")
+      .eq("user_id", userId);
+
+    if (!existingSurveys) return baseTitle;
+
+    const baseNorm = normalize(baseTitle);
+    const others = existingSurveys
+      .filter(s => (currentSurveyId ? s.id !== currentSurveyId : true))
+      .map(s => ({ id: s.id, title: s.title, norm: normalize(s.title) }));
+
+    // Check if same normalized title exists
+    const existsSame = others.some(o => o.norm === baseNorm);
+    if (!existsSame) return baseTitle;
+
+    // Find max existing suffix
+    const escaped = baseTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`^${escaped} \\((\\d+)\\)$`, "i");
+    let max = 0;
+
+    for (const o of others) {
+      const m = o.title.match(pattern);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (!Number.isNaN(n) && n > max) max = n;
+      }
+    }
+
+    return `${baseTitle} (${max + 1})`;
+  };
+
   const handleSaveTitle = async (id: string) => {
     const trimmedTitle = editingTitleValue.trim();
     
@@ -190,16 +225,26 @@ const Dashboard = () => {
       return;
     }
 
+    if (!user) return;
+
     try {
+      const uniqueTitle = await ensureUniqueTitle(trimmedTitle, user.id, id);
+      
+      if (uniqueTitle !== trimmedTitle) {
+        toast.info("Titolo modificato", {
+          description: `Un questionario con questo titolo esiste già. Rinominato in "${uniqueTitle}"`,
+        });
+      }
+
       const { error } = await supabase
         .from("surveys")
-        .update({ title: trimmedTitle })
+        .update({ title: uniqueTitle })
         .eq("id", id);
 
       if (error) throw error;
 
       setSurveys(surveys.map(s => 
-        s.id === id ? { ...s, title: trimmedTitle } : s
+        s.id === id ? { ...s, title: uniqueTitle } : s
       ));
       
       toast.success(t("titleUpdated") || "Titolo aggiornato");
