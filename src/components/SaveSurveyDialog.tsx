@@ -109,21 +109,21 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
     setSaving(true);
 
     try {
-      // Ensure unique title
-      const uniqueTitle = await ensureUniqueTitle(title.trim(), user.id, editingSurveyId);
-      
-      // Notify user if title was changed
-      if (uniqueTitle !== title.trim()) {
-        toast.info("Titolo modificato", {
-          description: `Un survey con questo nome esiste già. Rinominato in "${uniqueTitle}"`
-        });
-      }
-
       let shareToken: string;
       let surveyId: string | null = null;
 
       // If we're editing an existing survey
       if (editingSurveyId) {
+        // Ensure unique title for editing
+        const uniqueTitle = await ensureUniqueTitle(title.trim(), user.id, editingSurveyId);
+        
+        // Notify user if title was changed
+        if (uniqueTitle !== title.trim()) {
+          toast.info("Titolo modificato", {
+            description: `Un survey con questo nome esiste già. Rinominato in "${uniqueTitle}"`
+          });
+        }
+
         const { data: existingSurvey } = await supabase
           .from('surveys')
           .select('share_token')
@@ -160,6 +160,16 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
           .limit(1);
 
         if (existingDrafts && existingDrafts.length > 0) {
+          // Ensure unique title for draft update
+          const uniqueTitle = await ensureUniqueTitle(title.trim(), user.id, existingDrafts[0].id);
+          
+          // Notify user if title was changed
+          if (uniqueTitle !== title.trim()) {
+            toast.info("Titolo modificato", {
+              description: `Un survey con questo nome esiste già. Rinominato in "${uniqueTitle}"`
+            });
+          }
+
           // Update existing draft to published
           shareToken = existingDrafts[0].share_token;
           surveyId = existingDrafts[0].id;
@@ -180,6 +190,16 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
 
           if (error) throw error;
         } else {
+          // Ensure unique title for new survey
+          const uniqueTitle = await ensureUniqueTitle(title.trim(), user.id, null);
+          
+          // Notify user if title was changed
+          if (uniqueTitle !== title.trim()) {
+            toast.info("Titolo modificato", {
+              description: `Un survey con questo nome esiste già. Rinominato in "${uniqueTitle}"`
+            });
+          }
+
           // Create new published survey
           shareToken = crypto.randomUUID();
 
