@@ -12,6 +12,8 @@ import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import PublicSurvey from "./pages/PublicSurvey";
 import SurveyResponses from "./pages/SurveyResponses";
+import Community from "./pages/Community";
+import MyResearchRequests from "./pages/MyResearchRequests";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +31,8 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/community" element={<ProtectedRoute><Community /></ProtectedRoute>} />
+              <Route path="/my-research-requests" element={<ProtectedRoute><MyResearchRequests /></ProtectedRoute>} />
               <Route path="/survey/:shareToken" element={<PublicSurvey />} />
               <Route path="/survey/:id/responses" element={<ProtectedRoute><SurveyResponses /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -14,6 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
+      community_groups: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          invite_link: string
+          is_active: boolean
+          member_count: number | null
+          name: string
+          platform: string
+          topics: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          invite_link: string
+          is_active?: boolean
+          member_count?: number | null
+          name: string
+          platform: string
+          topics?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          invite_link?: string
+          is_active?: boolean
+          member_count?: number | null
+          name?: string
+          platform?: string
+          topics?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      participant_applications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          participant_id: string
+          research_request_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          participant_id: string
+          research_request_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          participant_id?: string
+          research_request_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participant_applications_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "participant_applications_research_request_id_fkey"
+            columns: ["research_request_id"]
+            isOneToOne: false
+            referencedRelation: "research_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           age_range: string | null
@@ -61,6 +145,78 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      research_requests: {
+        Row: {
+          created_at: string
+          current_participants: number
+          deadline: string | null
+          description: string | null
+          id: string
+          matching_enabled: boolean
+          status: string
+          survey_id: string | null
+          target_age_ranges: string[] | null
+          target_countries: string[] | null
+          target_interests: string[] | null
+          target_participants: number
+          title: string
+          topics: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_participants?: number
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          matching_enabled?: boolean
+          status?: string
+          survey_id?: string | null
+          target_age_ranges?: string[] | null
+          target_countries?: string[] | null
+          target_interests?: string[] | null
+          target_participants?: number
+          title: string
+          topics?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_participants?: number
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          matching_enabled?: boolean
+          status?: string
+          survey_id?: string | null
+          target_age_ranges?: string[] | null
+          target_countries?: string[] | null
+          target_interests?: string[] | null
+          target_participants?: number
+          title?: string
+          topics?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_requests_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       survey_responses: {
         Row: {

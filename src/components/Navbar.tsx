@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Languages, LogOut, LayoutDashboard, FileText, User, Crown, Zap } from "lucide-react";
+import { Languages, LogOut, LayoutDashboard, FileText, User, Crown, Zap, Users, MessageSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -112,6 +112,14 @@ export const Navbar = () => {
                   <DropdownMenuItem onClick={() => navigate("/dashboard")}>
                     <LayoutDashboard className="mr-2 h-4 w-4" />
                     <span>{t("dashboard")}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/community")}>
+                    <Users className="mr-2 h-4 w-4" />
+                    <span>Community</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/my-research-requests")}>
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    <span>My Requests</span>
                   </DropdownMenuItem>
                   {userTier !== 'business' && (
                     <>

@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Calendar, Copy, ExternalLink, Eye, Power, PowerOff, Trash2, Plus, BarChart, Clock, Mail, QrCode, Edit, AlertCircle, Crown } from "lucide-react";
+import { Calendar, Copy, ExternalLink, Eye, Power, PowerOff, Trash2, Plus, BarChart, Clock, Mail, QrCode, Edit, AlertCircle, Crown, Users } from "lucide-react";
+import { CreateResearchRequestDialog } from "@/components/CreateResearchRequestDialog";
 import { toast } from "sonner";
 import { format, addDays } from "date-fns";
 import { SurveyGenerator } from "@/components/SurveyGenerator";
@@ -42,6 +43,8 @@ const Dashboard = () => {
   const [editingTitleValue, setEditingTitleValue] = useState("");
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [findParticipantsSurveyId, setFindParticipantsSurveyId] = useState<string | null>(null);
+  const [createRequestDialogOpen, setCreateRequestDialogOpen] = useState(false);
   
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -570,6 +573,18 @@ const Dashboard = () => {
                           <Edit className="h-4 w-4 mr-1" />
                           {t("edit")}
                         </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => {
+                            setFindParticipantsSurveyId(survey.id);
+                            setCreateRequestDialogOpen(true);
+                          }}
+                          className="col-span-2"
+                        >
+                          <Users className="h-4 w-4 mr-1" />
+                          Find Participants
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -665,6 +680,17 @@ const Dashboard = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create Research Request Dialog */}
+      <CreateResearchRequestDialog
+        open={createRequestDialogOpen}
+        onOpenChange={setCreateRequestDialogOpen}
+        surveyId={findParticipantsSurveyId || undefined}
+        onSuccess={() => {
+          toast.success("Research request created successfully!");
+          setFindParticipantsSurveyId(null);
+        }}
+      />
     </div>
   );
 };
