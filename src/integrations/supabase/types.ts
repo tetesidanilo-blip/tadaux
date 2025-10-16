@@ -256,12 +256,14 @@ export type Database = {
           id: string
           is_active: boolean
           language: string
+          responses_public: boolean | null
           sections: Json
           share_token: string
           status: string
           title: string
           updated_at: string
           user_id: string
+          visible_in_community: boolean | null
         }
         Insert: {
           created_at?: string
@@ -271,12 +273,14 @@ export type Database = {
           id?: string
           is_active?: boolean
           language?: string
+          responses_public?: boolean | null
           sections: Json
           share_token: string
           status?: string
           title: string
           updated_at?: string
           user_id: string
+          visible_in_community?: boolean | null
         }
         Update: {
           created_at?: string
@@ -286,12 +290,14 @@ export type Database = {
           id?: string
           is_active?: boolean
           language?: string
+          responses_public?: boolean | null
           sections?: Json
           share_token?: string
           status?: string
           title?: string
           updated_at?: string
           user_id?: string
+          visible_in_community?: boolean | null
         }
         Relationships: [
           {

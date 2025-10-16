@@ -6,7 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Download } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowLeft, Download, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Navbar } from "@/components/Navbar";
@@ -32,6 +33,8 @@ const SurveyResponses = () => {
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [responses, setResponses] = useState<Response[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPublic, setIsPublic] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -45,18 +48,31 @@ const SurveyResponses = () => {
 
   const loadData = async () => {
     try {
-      // Load survey
+      // Load survey - check ownership first
       const { data: surveyData, error: surveyError } = await supabase
         .from("surveys")
         .select("*")
         .eq("id", id)
-        .eq("user_id", user?.id)
         .single();
 
       if (surveyError) throw surveyError;
 
       if (!surveyData) {
         navigate("/dashboard");
+        return;
+      }
+
+      // Check if user is owner or if responses are public
+      const userIsOwner = surveyData.user_id === user?.id;
+      const responsesArePublic = surveyData.responses_public === true;
+
+      setIsOwner(userIsOwner);
+      setIsPublic(responsesArePublic);
+
+      // If not owner and not public, redirect
+      if (!userIsOwner && !responsesArePublic) {
+        toast.error("Non hai accesso a queste risposte");
+        navigate("/");
         return;
       }
 
@@ -160,12 +176,30 @@ const SurveyResponses = () => {
       <Navbar />
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-8">
-          <Button variant="outline" onClick={() => navigate("/dashboard")}>
+          <Button variant="outline" onClick={() => navigate(isOwner ? "/dashboard" : "/community")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            {t("backToHome")}
+            {isOwner ? t("backToHome") : "Torna alla Community"}
           </Button>
           <h1 className="text-4xl font-bold">{survey.title}</h1>
         </div>
+
+        {isPublic && !isOwner && (
+          <Alert className="mb-6 bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
+            <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <AlertDescription className="text-blue-900 dark:text-blue-100">
+              Stai visualizzando le risposte pubbliche di questo questionario
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {isPublic && isOwner && (
+          <Alert className="mb-6 bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800">
+            <Eye className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="text-amber-900 dark:text-amber-100">
+              Queste risposte sono pubbliche e visibili a tutti gli utenti autenticati
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="flex justify-between items-center mb-6">
           <p className="text-lg text-muted-foreground">

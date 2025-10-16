@@ -8,7 +8,8 @@ import { ApplyToResearchDialog } from "@/components/ApplyToResearchDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Users, MessageCircle, ExternalLink } from "lucide-react";
+import { Users, MessageCircle, ExternalLink, FileText } from "lucide-react";
+import { PublicSurveyCard } from "@/components/PublicSurveyCard";
 
 interface ResearchRequest {
   id: string;
@@ -41,10 +42,24 @@ interface CommunityGroup {
   member_count: number;
 }
 
+interface PublicSurvey {
+  id: string;
+  title: string;
+  description: string | null;
+  share_token: string;
+  expires_at: string | null;
+  responses_public: boolean;
+  profiles: {
+    full_name: string | null;
+    subscription_tier: string;
+  };
+}
+
 export default function Community() {
   const [activeRequests, setActiveRequests] = useState<ResearchRequest[]>([]);
   const [myApplications, setMyApplications] = useState<Application[]>([]);
   const [communityGroups, setCommunityGroups] = useState<CommunityGroup[]>([]);
+  const [publicSurveys, setPublicSurveys] = useState<PublicSurvey[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<ResearchRequest | null>(null);
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -58,11 +73,39 @@ export default function Community() {
   const fetchData = async () => {
     setLoading(true);
     await Promise.all([
+      fetchPublicSurveys(),
       fetchActiveRequests(),
       fetchMyApplications(),
       fetchCommunityGroups()
     ]);
     setLoading(false);
+  };
+
+  const fetchPublicSurveys = async () => {
+    const { data, error } = await supabase
+      .from("surveys")
+      .select(`
+        id,
+        title,
+        description,
+        share_token,
+        expires_at,
+        responses_public,
+        profiles!surveys_user_id_fkey (
+          full_name,
+          subscription_tier
+        )
+      `)
+      .eq("visible_in_community", true)
+      .eq("status", "published")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching public surveys:", error);
+    } else {
+      setPublicSurveys(data || []);
+    }
   };
 
   const fetchActiveRequests = async () => {
@@ -153,12 +196,43 @@ export default function Community() {
           </p>
         </div>
 
-        <Tabs defaultValue="requests" className="space-y-6">
+        <Tabs defaultValue="surveys" className="space-y-6">
           <TabsList>
+            <TabsTrigger value="surveys">Public Surveys</TabsTrigger>
             <TabsTrigger value="requests">Active Requests</TabsTrigger>
             <TabsTrigger value="applications">My Applications</TabsTrigger>
             <TabsTrigger value="groups">Community Groups</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="surveys" className="space-y-4">
+            {publicSurveys.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Nessun questionario pubblico</h3>
+                  <p className="text-muted-foreground">
+                    I questionari visibili nella community appariranno qui
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {publicSurveys.map((survey) => (
+                  <PublicSurveyCard
+                    key={survey.id}
+                    id={survey.id}
+                    title={survey.title}
+                    description={survey.description}
+                    shareToken={survey.share_token}
+                    expiresAt={survey.expires_at}
+                    responsesPublic={survey.responses_public}
+                    creatorName={survey.profiles?.full_name || null}
+                    creatorTier={survey.profiles?.subscription_tier || 'free'}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
 
           <TabsContent value="requests" className="space-y-4">
             {activeRequests.length === 0 ? (

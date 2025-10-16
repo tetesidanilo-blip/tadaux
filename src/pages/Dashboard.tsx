@@ -28,6 +28,8 @@ interface Survey {
   expires_at: string | null;
   created_at: string;
   response_count?: number;
+  visible_in_community?: boolean;
+  responses_public?: boolean;
 }
 
 const Dashboard = () => {
@@ -481,8 +483,24 @@ const Dashboard = () => {
                         )}
                       </div>
 
-                      <div className="text-sm">
-                        <span className="font-semibold">{survey.response_count}</span> {t("responses")}
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm">
+                          <span className="font-semibold">{survey.response_count}</span> {t("responses")}
+                        </div>
+                        <div className="flex gap-1 flex-wrap justify-end">
+                          {(survey as any).visible_in_community && (
+                            <Badge variant="secondary" className="gap-1 text-xs">
+                              <Users className="h-3 w-3" />
+                              Community
+                            </Badge>
+                          )}
+                          {(survey as any).responses_public && (
+                            <Badge variant="outline" className="gap-1 text-xs">
+                              <Eye className="h-3 w-3" />
+                              Pubbliche
+                            </Badge>
+                          )}
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">

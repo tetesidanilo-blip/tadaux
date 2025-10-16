@@ -11,7 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CalendarIcon, Info } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CalendarIcon, Info, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -35,6 +37,10 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
   const [expiresAt, setExpiresAt] = useState<Date | undefined>();
   const [expiredMessage, setExpiredMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [userTier, setUserTier] = useState<string>('free');
+  const [visibleInCommunity, setVisibleInCommunity] = useState(false);
+  const [responsesPublic, setResponsesPublic] = useState(false);
+  const [legalConsent, setLegalConsent] = useState(false);
 
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -46,6 +52,28 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
       setTitle(sections[0].name);
     }
   }, [open, sections]);
+
+  // Fetch user tier when dialog opens
+  useEffect(() => {
+    const fetchUserTier = async () => {
+      if (user && open) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('subscription_tier')
+          .eq('id', user.id)
+          .single();
+        
+        const tier = data?.subscription_tier || 'free';
+        setUserTier(tier);
+        
+        // Auto-set for FREE tier
+        if (tier === 'free') {
+          setVisibleInCommunity(true);
+        }
+      }
+    };
+    fetchUserTier();
+  }, [user, open]);
 
   const handleQuickExpiration = (days: number | null) => {
     if (days === null) {
@@ -103,6 +131,13 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
       return;
     }
 
+    if (responsesPublic && !legalConsent) {
+      toast.error("Consenso richiesto", {
+        description: "Devi confermare di assumerti la responsabilità delle risposte pubblicate"
+      });
+      return;
+    }
+
     if (!user) {
       navigate("/auth");
       return;
@@ -146,6 +181,8 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
             status: 'published',
             expires_at: expiresAt ? expiresAt.toISOString() : null,
             expired_message: expiredMessage.trim() || null,
+            visible_in_community: userTier === 'free' ? true : visibleInCommunity,
+            responses_public: responsesPublic,
             updated_at: new Date().toISOString()
           })
           .eq('id', surveyId);
@@ -186,7 +223,9 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
               is_active: true,
               status: 'published',
               expires_at: expiresAt ? expiresAt.toISOString() : null,
-              expired_message: expiredMessage.trim() || null
+              expired_message: expiredMessage.trim() || null,
+              visible_in_community: userTier === 'free' ? true : visibleInCommunity,
+              responses_public: responsesPublic
             })
             .eq('id', surveyId);
 
@@ -217,7 +256,9 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
               is_active: true,
               status: 'published',
               expires_at: expiresAt ? expiresAt.toISOString() : null,
-              expired_message: expiredMessage.trim() || null
+              expired_message: expiredMessage.trim() || null,
+              visible_in_community: userTier === 'free' ? true : visibleInCommunity,
+              responses_public: responsesPublic
             }])
             .select()
             .single();
@@ -362,6 +403,88 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
             </div>
           )}
 
+          {/* Visibility Section */}
+          <div className="space-y-4 border-t pt-4">
+            <h3 className="font-semibold">Visibilità</h3>
+            
+            {/* Survey Visibility (Questions) */}
+            {userTier === 'free' ? (
+              <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
+                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <AlertDescription className="text-blue-900 dark:text-blue-100">
+                  I questionari del piano Free sono automaticamente visibili nella Community
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="visible-community"
+                  checked={visibleInCommunity}
+                  onCheckedChange={(checked) => setVisibleInCommunity(checked as boolean)}
+                />
+                <Label htmlFor="visible-community" className="text-sm font-normal cursor-pointer">
+                  Rendi le domande visibili nella Community
+                </Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>Altri utenti potranno vedere e compilare il tuo questionario</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            )}
+
+            {/* Responses Visibility */}
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="responses-public"
+                  checked={responsesPublic}
+                  onCheckedChange={(checked) => {
+                    setResponsesPublic(checked as boolean);
+                    if (!checked) setLegalConsent(false);
+                  }}
+                />
+                <Label htmlFor="responses-public" className="text-sm font-normal cursor-pointer">
+                  Rendi pubbliche le risposte raccolte
+                </Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>Le risposte saranno visibili a tutti gli utenti autenticati. Assicurati di avere il consenso dei partecipanti.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              
+              {responsesPublic && (
+                <div className="space-y-2 pl-6">
+                  <Alert className="bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <AlertDescription className="text-amber-900 dark:text-amber-100 text-xs">
+                      ⚠️ Condividendo le risposte, ti assumi la responsabilità legale del contenuto pubblicato. La piattaforma si riserva il diritto di rimuovere contenuti inappropriati o illegali.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="flex items-start space-x-2">
+                    <Checkbox
+                      id="legal-consent"
+                      checked={legalConsent}
+                      onCheckedChange={(checked) => setLegalConsent(checked as boolean)}
+                      required={responsesPublic}
+                    />
+                    <Label htmlFor="legal-consent" className="text-xs font-normal leading-tight cursor-pointer">
+                      Confermo di avere ottenuto il consenso necessario dai partecipanti e di assumermi la responsabilità del contenuto delle risposte pubblicate
+                    </Label>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="flex gap-2 pt-4">
             <Button
               variant="outline"
@@ -372,7 +495,7 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
             </Button>
             <Button
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || (responsesPublic && !legalConsent)}
               className="flex-1"
             >
               {saving ? t("submitting") : t("save")}
