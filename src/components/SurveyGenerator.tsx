@@ -102,14 +102,16 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
 
           if (error) throw error;
         } else {
-          // Create new draft
+          // Create new draft - use first section name as title
+          const draftTitle = sections[0]?.name || 'Bozza senza titolo';
+          
           const { data, error } = await supabase
             .from('surveys')
             .insert([{
               user_id: user.id,
               sections: sections as any,
               language,
-              title: 'Bozza senza titolo',
+              title: draftTitle,
               status: 'draft',
               share_token: shareToken!,
               is_active: false
