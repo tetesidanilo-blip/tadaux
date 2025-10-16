@@ -7,14 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Calendar, Copy, ExternalLink, Eye, Power, PowerOff, Trash2, Plus, BarChart, Clock, Mail, QrCode, Edit } from "lucide-react";
+import { Calendar, Copy, ExternalLink, Eye, Power, PowerOff, Trash2, Plus, BarChart, Clock, Mail, QrCode, Edit, AlertCircle, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { format, addDays } from "date-fns";
 import { SurveyGenerator } from "@/components/SurveyGenerator";
 import { Navbar } from "@/components/Navbar";
 import { QRCodeSVG } from "qrcode.react";
+import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
 
 interface Survey {
   id: string;
@@ -38,6 +40,8 @@ const Dashboard = () => {
   const [editingSurvey, setEditingSurvey] = useState<any | null>(null);
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [editingTitleValue, setEditingTitleValue] = useState("");
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
   
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -46,8 +50,19 @@ const Dashboard = () => {
   useEffect(() => {
     if (user) {
       loadSurveys();
+      loadUserProfile();
     }
   }, [user]);
+
+  const loadUserProfile = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+    if (data) setUserProfile(data);
+  };
 
   const loadSurveys = async () => {
     try {
@@ -283,6 +298,11 @@ const Dashboard = () => {
   const activeSurveys = surveys.filter(s => s.is_active && !isSurveyExpired(s.expires_at)).length;
   const expiredSurveys = surveys.filter(s => isSurveyExpired(s.expires_at)).length;
 
+  const isFreeUser = userProfile?.subscription_tier === 'free';
+  const surveysCreated = userProfile?.surveys_created_count || 0;
+  const responsesCollected = userProfile?.total_responses_collected || 0;
+  const canCreateSurvey = !isFreeUser || surveysCreated < 10;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <Navbar />
@@ -293,11 +313,56 @@ const Dashboard = () => {
             onClick={() => setShowGenerator(true)}
             size="lg"
             className="gap-2"
+            disabled={!canCreateSurvey}
+            title={!canCreateSurvey ? "Free tier limit reached. Upgrade to Pro for unlimited surveys." : ""}
           >
             <Plus className="h-5 w-5" />
             {t("createNew")}
           </Button>
         </div>
+
+        {/* Usage Limits Card - Only for Free users */}
+        {isFreeUser && (
+          <Card className="mb-6 border-l-4 border-l-primary">
+            <CardContent className="flex items-center gap-4 pt-6">
+              <AlertCircle className="h-8 w-8 text-primary flex-shrink-0" />
+              
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="font-semibold">
+                    Free Plan
+                  </Badge>
+                  <p className="text-sm text-muted-foreground">
+                    You're using the Free plan
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Surveys Created</span>
+                      <span className="font-medium">{surveysCreated}/10</span>
+                    </div>
+                    <Progress value={(surveysCreated / 10) * 100} />
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Responses Collected</span>
+                      <span className="font-medium">{responsesCollected}/20</span>
+                    </div>
+                    <Progress value={(responsesCollected / 20) * 100} />
+                  </div>
+                </div>
+              </div>
+              
+              <Button onClick={() => setUpgradeDialogOpen(true)} className="flex-shrink-0">
+                <Crown className="h-4 w-4 mr-2" />
+                Upgrade to Pro
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Statistics Cards */}
         <div className="grid gap-4 md:grid-cols-3 mb-8">
@@ -514,6 +579,12 @@ const Dashboard = () => {
           </div>
         )}
       </div>
+
+      <UpgradePlanDialog
+        open={upgradeDialogOpen}
+        onOpenChange={setUpgradeDialogOpen}
+        currentTier={userProfile?.subscription_tier || 'free'}
+      />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>

@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Languages, LogOut, LayoutDashboard, FileText } from "lucide-react";
+import { Languages, LogOut, LayoutDashboard, FileText, User, Crown, Zap } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,12 +14,33 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
 
 export const Navbar = () => {
   const { user, signOut } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+  const [userTier, setUserTier] = useState<'free' | 'pro' | 'business'>('free');
+
+  useEffect(() => {
+    if (user) {
+      loadUserTier();
+    }
+  }, [user]);
+
+  const loadUserTier = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("subscription_tier")
+      .eq("id", user.id)
+      .single();
+    if (data) {
+      setUserTier(data.subscription_tier as 'free' | 'pro' | 'business' || 'free');
+    }
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -27,6 +51,15 @@ export const Navbar = () => {
     if (!user?.email) return "U";
     return user.email.charAt(0).toUpperCase();
   };
+
+  const tierConfig = {
+    free: { label: "Free", icon: null, className: "" },
+    pro: { label: "Pro", icon: Zap, className: "bg-primary text-primary-foreground" },
+    business: { label: "Business", icon: Crown, className: "bg-gradient-to-r from-purple-600 to-pink-600 text-white" },
+  };
+
+  const currentTierConfig = tierConfig[userTier];
+  const TierIcon = currentTierConfig.icon;
 
   return (
     <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -65,13 +98,30 @@ export const Navbar = () => {
                   <div className="flex items-center justify-start gap-2 p-2">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium">{user.email}</p>
+                      <Badge className={currentTierConfig.className} variant={userTier === 'free' ? 'outline' : 'default'}>
+                        {TierIcon && <TierIcon className="w-3 h-3 mr-1" />}
+                        {currentTierConfig.label}
+                      </Badge>
                     </div>
                   </div>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/profile")}>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/dashboard")}>
                     <LayoutDashboard className="mr-2 h-4 w-4" />
                     <span>{t("dashboard")}</span>
                   </DropdownMenuItem>
+                  {userTier !== 'business' && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setUpgradeDialogOpen(true)}>
+                        <Crown className="mr-2 h-4 w-4" />
+                        <span>Upgrade Plan</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
@@ -87,6 +137,12 @@ export const Navbar = () => {
           </div>
         </div>
       </div>
+
+      <UpgradePlanDialog
+        open={upgradeDialogOpen}
+        onOpenChange={setUpgradeDialogOpen}
+        currentTier={userTier}
+      />
     </nav>
   );
 };

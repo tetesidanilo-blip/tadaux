@@ -1,0 +1,357 @@
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
+import { Navbar } from "@/components/Navbar";
+import { Crown, Zap, Check, X } from "lucide-react";
+
+const COUNTRIES = ["Italy", "United States", "United Kingdom", "Germany", "France", "Spain", "Canada", "Australia", "Other"];
+const INTEREST_OPTIONS = ["Gaming", "E-commerce", "B2B", "Healthcare", "Education", "Finance", "Travel", "Food & Beverage", "Technology", "Entertainment"];
+
+interface ProfileData {
+  full_name: string;
+  subscription_tier: 'free' | 'pro' | 'business';
+  subscription_expires_at: string | null;
+  interests: string[];
+  age_range: string | null;
+  country: string | null;
+  available_for_research: boolean;
+  profile_completed: boolean;
+}
+
+export default function Profile() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+  const [profile, setProfile] = useState<ProfileData>({
+    full_name: "",
+    subscription_tier: "free",
+    subscription_expires_at: null,
+    interests: [],
+    age_range: null,
+    country: null,
+    available_for_research: false,
+    profile_completed: false,
+  });
+
+  const maxInterests = profile.subscription_tier === 'free' ? 3 : profile.subscription_tier === 'pro' ? 5 : 10;
+
+  useEffect(() => {
+    if (user) {
+      loadProfile();
+    }
+  }, [user]);
+
+  const loadProfile = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (error) {
+      toast({
+        title: "Error loading profile",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (data) {
+      const tier = data.subscription_tier as 'free' | 'pro' | 'business' || 'free';
+      setProfile({
+        full_name: data.full_name || "",
+        subscription_tier: tier,
+        subscription_expires_at: data.subscription_expires_at,
+        interests: data.interests || [],
+        age_range: data.age_range,
+        country: data.country,
+        available_for_research: data.available_for_research || false,
+        profile_completed: data.profile_completed || false,
+      });
+    }
+  };
+
+  const calculateCompletionPercentage = () => {
+    let filled = 0;
+    let total = 5;
+    
+    if (profile.full_name) filled++;
+    if (profile.interests.length > 0) filled++;
+    if (profile.country) filled++;
+    if (profile.subscription_tier !== 'free' && profile.age_range) filled++;
+    else if (profile.subscription_tier === 'free') total = 4;
+    if (profile.available_for_research) filled++;
+
+    return Math.round((filled / total) * 100);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setLoading(true);
+
+    const updates = {
+      id: user.id,
+      full_name: profile.full_name,
+      interests: profile.interests,
+      age_range: profile.age_range,
+      country: profile.country,
+      available_for_research: profile.available_for_research,
+      profile_completed: !!(profile.full_name && profile.interests.length > 0 && profile.country),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from("profiles")
+      .update(updates)
+      .eq("id", user.id);
+
+    setLoading(false);
+
+    if (error) {
+      toast({
+        title: "Error saving profile",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been saved successfully.",
+      });
+      loadProfile();
+    }
+  };
+
+  const toggleInterest = (interest: string) => {
+    if (profile.interests.includes(interest)) {
+      setProfile({ ...profile, interests: profile.interests.filter(i => i !== interest) });
+    } else {
+      if (profile.interests.length < maxInterests) {
+        setProfile({ ...profile, interests: [...profile.interests, interest] });
+      } else {
+        toast({
+          title: "Interest limit reached",
+          description: `You can select up to ${maxInterests} interests on the ${profile.subscription_tier} plan.`,
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const tierConfig = {
+    free: { label: "Free", icon: null, color: "bg-muted text-muted-foreground" },
+    pro: { label: "Pro", icon: Zap, color: "bg-primary text-primary-foreground" },
+    business: { label: "Business", icon: Crown, color: "bg-gradient-to-r from-purple-600 to-pink-600 text-white" },
+  };
+
+  const currentTier = tierConfig[profile.subscription_tier];
+  const TierIcon = currentTier.icon;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="container mx-auto py-8 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold">Profile Settings</h1>
+            <p className="text-muted-foreground">Manage your account and preferences</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Subscription Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Subscription</CardTitle>
+                <CardDescription>Current plan and benefits</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Badge className={currentTier.color}>
+                    {TierIcon && <TierIcon className="w-3 h-3 mr-1" />}
+                    {currentTier.label}
+                  </Badge>
+                  {profile.subscription_expires_at && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Expires: {new Date(profile.subscription_expires_at).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2 pt-4 border-t">
+                  <p className="font-semibold text-sm">Current Benefits:</p>
+                  <ul className="space-y-1 text-sm">
+                    {profile.subscription_tier === 'free' && (
+                      <>
+                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-600" /> 10 Surveys</li>
+                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-600" /> 20 Responses</li>
+                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-600" /> 3 Interests</li>
+                        <li className="flex items-center gap-2"><X className="w-4 h-4 text-muted-foreground" /> Auto-matching</li>
+                      </>
+                    )}
+                    {profile.subscription_tier === 'pro' && (
+                      <>
+                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-600" /> Unlimited Surveys</li>
+                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-600" /> Unlimited Responses</li>
+                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-600" /> 5 Interests</li>
+                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-600" /> Auto-matching (4 vars)</li>
+                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-600" /> 50 Auto-invites</li>
+                      </>
+                    )}
+                    {profile.subscription_tier === 'business' && (
+                      <>
+                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-600" /> Everything in Pro</li>
+                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-600" /> 10 Interests</li>
+                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-600" /> Advanced Matching</li>
+                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-600" /> Unlimited Invites</li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+
+                {profile.subscription_tier !== 'business' && (
+                  <Button 
+                    className="w-full" 
+                    onClick={() => setUpgradeDialogOpen(true)}
+                  >
+                    {profile.subscription_tier === 'free' ? 'Upgrade to Pro' : 'Upgrade to Business'}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Profile Form */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Complete Your Profile</CardTitle>
+                <CardDescription>
+                  Profile Completion: {calculateCompletionPercentage()}%
+                </CardDescription>
+                <Progress value={calculateCompletionPercentage()} className="mt-2" />
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <Input
+                    id="fullName"
+                    value={profile.full_name}
+                    onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                    placeholder="Enter your full name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>
+                    Interests ({profile.interests.length}/{maxInterests})
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Select topics you're interested in
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {INTEREST_OPTIONS.map((interest) => (
+                      <Badge
+                        key={interest}
+                        variant={profile.interests.includes(interest) ? "default" : "outline"}
+                        className="cursor-pointer"
+                        onClick={() => toggleInterest(interest)}
+                      >
+                        {interest}
+                        {profile.interests.includes(interest) && " ✓"}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ageRange">
+                    Age Range {profile.subscription_tier === 'free' && "(Pro+ only)"}
+                  </Label>
+                  <Select
+                    value={profile.age_range || ""}
+                    onValueChange={(value) => setProfile({ ...profile, age_range: value })}
+                    disabled={profile.subscription_tier === 'free'}
+                  >
+                    <SelectTrigger id="ageRange">
+                      <SelectValue placeholder="Select age range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="18-24">18-24</SelectItem>
+                      <SelectItem value="25-34">25-34</SelectItem>
+                      <SelectItem value="35-44">35-44</SelectItem>
+                      <SelectItem value="45-54">45-54</SelectItem>
+                      <SelectItem value="55-64">55-64</SelectItem>
+                      <SelectItem value="65+">65+</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {profile.subscription_tier === 'free' && (
+                    <p className="text-sm text-muted-foreground">
+                      Upgrade to Pro to unlock age range selection
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="country">Country</Label>
+                  <Select
+                    value={profile.country || ""}
+                    onValueChange={(value) => setProfile({ ...profile, country: value })}
+                  >
+                    <SelectTrigger id="country">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRIES.map((country) => (
+                        <SelectItem key={country} value={country}>
+                          {country}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="available">Available for Research</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Allow researchers to find and invite you to participate in UX research
+                    </p>
+                  </div>
+                  <Switch
+                    id="available"
+                    checked={profile.available_for_research}
+                    onCheckedChange={(checked) =>
+                      setProfile({ ...profile, available_for_research: checked })
+                    }
+                  />
+                </div>
+
+                <Button onClick={handleSaveProfile} disabled={loading} className="w-full">
+                  {loading ? "Saving..." : "Save Profile"}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+
+      <UpgradePlanDialog
+        open={upgradeDialogOpen}
+        onOpenChange={setUpgradeDialogOpen}
+        currentTier={profile.subscription_tier}
+      />
+    </div>
+  );
+}

@@ -16,16 +16,49 @@ export type Database = {
     Tables: {
       profiles: {
         Row: {
+          age_range: string | null
+          available_for_research: boolean | null
+          country: string | null
           created_at: string
+          full_name: string | null
           id: string
+          interests: string[] | null
+          profile_completed: boolean | null
+          subscription_expires_at: string | null
+          subscription_tier: string | null
+          surveys_created_count: number | null
+          total_responses_collected: number | null
+          updated_at: string | null
         }
         Insert: {
+          age_range?: string | null
+          available_for_research?: boolean | null
+          country?: string | null
           created_at?: string
+          full_name?: string | null
           id: string
+          interests?: string[] | null
+          profile_completed?: boolean | null
+          subscription_expires_at?: string | null
+          subscription_tier?: string | null
+          surveys_created_count?: number | null
+          total_responses_collected?: number | null
+          updated_at?: string | null
         }
         Update: {
+          age_range?: string | null
+          available_for_research?: boolean | null
+          country?: string | null
           created_at?: string
+          full_name?: string | null
           id?: string
+          interests?: string[] | null
+          profile_completed?: boolean | null
+          subscription_expires_at?: string | null
+          subscription_tier?: string | null
+          surveys_created_count?: number | null
+          total_responses_collected?: number | null
+          updated_at?: string | null
         }
         Relationships: []
       }
