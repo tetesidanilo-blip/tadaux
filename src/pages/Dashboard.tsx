@@ -549,7 +549,7 @@ const Dashboard = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => navigate(`/survey/${survey.id}/responses`)}
+                          onClick={() => navigate(`/survey-responses/${survey.id}`)}
                         >
                           <Eye className="h-4 w-4 mr-1" />
                           {t("responses")}
