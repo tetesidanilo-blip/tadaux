@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Calendar, Copy, ExternalLink, Eye, Power, PowerOff, Trash2, Plus, BarChart, Clock, Mail, QrCode, Edit, AlertCircle, Crown, Users } from "lucide-react";
+import { Calendar as CalendarIcon, Copy, ExternalLink, Eye, Power, PowerOff, Trash2, Plus, BarChart, Clock, Mail, QrCode, Edit, AlertCircle, Crown, Users } from "lucide-react";
 import { CreateResearchRequestDialog } from "@/components/CreateResearchRequestDialog";
 import { toast } from "sonner";
 import { format, addDays } from "date-fns";
@@ -18,6 +18,10 @@ import { SurveyGenerator } from "@/components/SurveyGenerator";
 import { Navbar } from "@/components/Navbar";
 import { QRCodeSVG } from "qrcode.react";
 import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 interface Survey {
   id: string;
@@ -47,6 +51,9 @@ const Dashboard = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [findParticipantsSurveyId, setFindParticipantsSurveyId] = useState<string | null>(null);
   const [createRequestDialogOpen, setCreateRequestDialogOpen] = useState(false);
+  const [activateSurveyId, setActivateSurveyId] = useState<string | null>(null);
+  const [expiryDate, setExpiryDate] = useState<Date | undefined>(undefined);
+  const [expiryTime, setExpiryTime] = useState<string>("23:59");
   
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -135,11 +142,35 @@ const Dashboard = () => {
     }
   };
 
-  const toggleActive = async (id: string, currentState: boolean) => {
+  const handleActivateClick = (id: string, currentState: boolean) => {
+    if (currentState) {
+      // If currently active, deactivate immediately
+      toggleActive(id, true);
+    } else {
+      // If currently inactive, show activation dialog
+      setActivateSurveyId(id);
+      setExpiryDate(undefined);
+      setExpiryTime("23:59");
+    }
+  };
+
+  const toggleActive = async (id: string, currentState: boolean, expiresAt?: string | null) => {
     try {
+      const updateData: any = { is_active: !currentState };
+      
+      // If activating with an expiry date, set it
+      if (!currentState && expiresAt) {
+        updateData.expires_at = expiresAt;
+      }
+      
+      // If deactivating, clear expiry date
+      if (currentState) {
+        updateData.expires_at = null;
+      }
+
       const { error } = await supabase
         .from("surveys")
-        .update({ is_active: !currentState })
+        .update(updateData)
         .eq("id", id);
 
       if (error) throw error;
@@ -147,9 +178,28 @@ const Dashboard = () => {
       toast.success(!currentState ? t("surveyActivated") : t("surveyDeactivated"));
       loadSurveys();
     } catch (error) {
-      console.error("Error updating survey:", error);
+      console.error("Error toggling survey:", error);
       toast.error("Failed to update survey");
     }
+  };
+
+  const handleConfirmActivation = () => {
+    if (!activateSurveyId) return;
+
+    let expiresAtValue: string | null = null;
+
+    if (expiryDate) {
+      // Combine date and time
+      const [hours, minutes] = expiryTime.split(':');
+      const combinedDateTime = new Date(expiryDate);
+      combinedDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      expiresAtValue = combinedDateTime.toISOString();
+    }
+
+    toggleActive(activateSurveyId, false, expiresAtValue);
+    setActivateSurveyId(null);
+    setExpiryDate(undefined);
+    setExpiryTime("23:59");
   };
 
   const copyLink = (shareToken: string) => {
@@ -557,7 +607,7 @@ const Dashboard = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => toggleActive(survey.id, survey.is_active)}
+                          onClick={() => handleActivateClick(survey.id, survey.is_active)}
                         >
                           {survey.is_active ? (
                             <><PowerOff className="h-4 w-4 mr-1" />{t("deactivate")}</>
@@ -664,6 +714,82 @@ const Dashboard = () => {
             </Button>
             <Button onClick={handleExtendExpiry}>
               {t("extend")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Activation Dialog */}
+      <Dialog open={!!activateSurveyId} onOpenChange={() => setActivateSurveyId(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Attiva Questionario</DialogTitle>
+            <DialogDescription>
+              Puoi impostare una data e ora di scadenza opzionale. Se non imposti nulla, il questionario rimarrà attivo finché non lo disattivi manualmente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Data di scadenza (opzionale)</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !expiryDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {expiryDate ? format(expiryDate, "PPP") : "Seleziona una data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={expiryDate}
+                    onSelect={setExpiryDate}
+                    disabled={(date) => date < new Date()}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {expiryDate && (
+              <div className="space-y-2">
+                <Label>Ora di scadenza</Label>
+                <Input
+                  type="time"
+                  value={expiryTime}
+                  onChange={(e) => setExpiryTime(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+            )}
+
+            {expiryDate && (
+              <div className="rounded-md bg-muted p-3 text-sm">
+                <p className="font-medium">Il questionario scadrà il:</p>
+                <p className="text-muted-foreground mt-1">
+                  {format(expiryDate, "PPP")} alle {expiryTime}
+                </p>
+              </div>
+            )}
+
+            {!expiryDate && (
+              <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
+                <p>Il questionario rimarrà attivo finché non lo disattivi manualmente.</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActivateSurveyId(null)}>
+              Annulla
+            </Button>
+            <Button onClick={handleConfirmActivation}>
+              Attiva Questionario
             </Button>
           </DialogFooter>
         </DialogContent>
