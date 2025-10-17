@@ -54,6 +54,7 @@ const Dashboard = () => {
   const [activateSurveyId, setActivateSurveyId] = useState<string | null>(null);
   const [expiryDate, setExpiryDate] = useState<Date | undefined>(undefined);
   const [expiryTime, setExpiryTime] = useState<string>("23:59");
+  const [calendarOpen, setCalendarOpen] = useState(false);
   
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -197,6 +198,7 @@ const Dashboard = () => {
     }
 
     toggleActive(activateSurveyId, false, expiresAtValue);
+    setCalendarOpen(false);
     setActivateSurveyId(null);
     setExpiryDate(undefined);
     setExpiryTime("23:59");
@@ -720,8 +722,15 @@ const Dashboard = () => {
       </Dialog>
 
       {/* Activation Dialog */}
-      <Dialog open={!!activateSurveyId} onOpenChange={() => setActivateSurveyId(null)}>
-        <DialogContent className="max-w-md">
+      <Dialog open={!!activateSurveyId} onOpenChange={(open) => {
+        if (!open) {
+          setCalendarOpen(false);
+          setActivateSurveyId(null);
+          setExpiryDate(undefined);
+          setExpiryTime("23:59");
+        }
+      }}>
+        <DialogContent className="max-w-md z-50">
           <DialogHeader>
             <DialogTitle>Attiva Questionario</DialogTitle>
             <DialogDescription>
@@ -731,7 +740,7 @@ const Dashboard = () => {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Data di scadenza (opzionale)</Label>
-              <Popover>
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -748,7 +757,10 @@ const Dashboard = () => {
                   <Calendar
                     mode="single"
                     selected={expiryDate}
-                    onSelect={setExpiryDate}
+                    onSelect={(date) => {
+                      setExpiryDate(date);
+                      setCalendarOpen(false);
+                    }}
                     disabled={(date) => date < new Date()}
                     initialFocus
                     className={cn("p-3 pointer-events-auto")}
@@ -785,7 +797,12 @@ const Dashboard = () => {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setActivateSurveyId(null)}>
+            <Button variant="outline" onClick={() => {
+              setCalendarOpen(false);
+              setActivateSurveyId(null);
+              setExpiryDate(undefined);
+              setExpiryTime("23:59");
+            }}>
               Annulla
             </Button>
             <Button onClick={handleConfirmActivation}>
