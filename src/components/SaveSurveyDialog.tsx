@@ -41,6 +41,7 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
   const [visibleInCommunity, setVisibleInCommunity] = useState(false);
   const [responsesPublic, setResponsesPublic] = useState(false);
   const [legalConsent, setLegalConsent] = useState(false);
+  const [expiresPopoverOpen, setExpiresPopoverOpen] = useState(false);
 
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -292,7 +293,12 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen) {
+        setExpiresPopoverOpen(false);
+      }
+      onOpenChange(isOpen);
+    }}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("saveSurvey")}</DialogTitle>
@@ -364,7 +370,7 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
                 {t("noExpirationOption")}
               </Button>
             </div>
-            <Popover>
+            <Popover open={expiresPopoverOpen} onOpenChange={setExpiresPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -381,7 +387,10 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
                 <Calendar
                   mode="single"
                   selected={expiresAt}
-                  onSelect={setExpiresAt}
+                  onSelect={(date) => {
+                    setExpiresAt(date);
+                    setExpiresPopoverOpen(false);
+                  }}
                   disabled={(date) => date < new Date()}
                   initialFocus
                   className="pointer-events-auto"

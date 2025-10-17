@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Calendar as CalendarIcon, Copy, ExternalLink, Eye, Power, PowerOff, Trash2, Plus, BarChart, Clock, Mail, QrCode, Edit, AlertCircle, Crown, Users } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Calendar as CalendarIcon, Copy, ExternalLink, Eye, Power, PowerOff, Trash2, Plus, BarChart, Clock, Mail, QrCode, Edit, AlertCircle, Crown, Users, Info } from "lucide-react";
 import { CreateResearchRequestDialog } from "@/components/CreateResearchRequestDialog";
 import { toast } from "sonner";
 import { format, addDays } from "date-fns";
@@ -52,6 +53,7 @@ const Dashboard = () => {
   const [findParticipantsSurveyId, setFindParticipantsSurveyId] = useState<string | null>(null);
   const [createRequestDialogOpen, setCreateRequestDialogOpen] = useState(false);
   const [activateSurveyId, setActivateSurveyId] = useState<string | null>(null);
+  const [showExpiry, setShowExpiry] = useState(false);
   const [expiryDate, setExpiryDate] = useState<Date | undefined>(undefined);
   const [expiryTime, setExpiryTime] = useState<string>("23:59");
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -199,6 +201,7 @@ const Dashboard = () => {
 
     toggleActive(activateSurveyId, false, expiresAtValue);
     setCalendarOpen(false);
+    setShowExpiry(false);
     setActivateSurveyId(null);
     setExpiryDate(undefined);
     setExpiryTime("23:59");
@@ -725,6 +728,7 @@ const Dashboard = () => {
       <Dialog open={!!activateSurveyId} onOpenChange={(open) => {
         if (!open) {
           setCalendarOpen(false);
+          setShowExpiry(false);
           setActivateSurveyId(null);
           setExpiryDate(undefined);
           setExpiryTime("23:59");
@@ -734,77 +738,85 @@ const Dashboard = () => {
           <DialogHeader>
             <DialogTitle>Attiva Questionario</DialogTitle>
             <DialogDescription>
-              Puoi impostare una data e ora di scadenza opzionale. Se non imposti nulla, il questionario rimarrà attivo finché non lo disattivi manualmente.
+              {showExpiry ? "Imposta la data di scadenza" : "Vuoi attivare il questionario?"}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Data di scadenza (opzionale)</Label>
-              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !expiryDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {expiryDate ? format(expiryDate, "PPP") : "Seleziona una data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={expiryDate}
-                    onSelect={(date) => {
-                      setExpiryDate(date);
-                      setCalendarOpen(false);
-                    }}
-                    disabled={(date) => date < new Date()}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
+          
+          {!showExpiry ? (
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-muted-foreground">
+                Puoi attivare il questionario senza scadenza o aggiungere una data di scadenza.
+              </p>
             </div>
-
-            {expiryDate && (
+          ) : (
+            <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Ora di scadenza</Label>
-                <Input
-                  type="time"
-                  value={expiryTime}
-                  onChange={(e) => setExpiryTime(e.target.value)}
-                  className="w-full"
-                />
+                <Label>Data di scadenza</Label>
+                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn("w-full justify-start text-left font-normal", !expiryDate && "text-muted-foreground")}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {expiryDate ? format(expiryDate, "PPP") : <span>Seleziona data</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={expiryDate}
+                      onSelect={(date) => {
+                        setExpiryDate(date);
+                        setCalendarOpen(false);
+                      }}
+                      disabled={(date) => date < new Date()}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
-            )}
 
-            {expiryDate && (
-              <div className="rounded-md bg-muted p-3 text-sm">
-                <p className="font-medium">Il questionario scadrà il:</p>
-                <p className="text-muted-foreground mt-1">
-                  {format(expiryDate, "PPP")} alle {expiryTime}
-                </p>
-              </div>
-            )}
+              {expiryDate && (
+                <div className="space-y-2">
+                  <Label>Ora di scadenza</Label>
+                  <Input
+                    type="time"
+                    value={expiryTime}
+                    onChange={(e) => setExpiryTime(e.target.value)}
+                  />
+                </div>
+              )}
 
-            {!expiryDate && (
-              <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
-                <p>Il questionario rimarrà attivo finché non lo disattivi manualmente.</p>
-              </div>
-            )}
-          </div>
+              {expiryDate && (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Il questionario scadrà il {format(expiryDate, "PPP")} alle {expiryTime}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
+          
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setCalendarOpen(false);
+              setShowExpiry(false);
               setActivateSurveyId(null);
               setExpiryDate(undefined);
               setExpiryTime("23:59");
             }}>
               Annulla
             </Button>
+            
+            {!showExpiry && (
+              <Button variant="secondary" onClick={() => setShowExpiry(true)}>
+                Aggiungi scadenza
+              </Button>
+            )}
+            
             <Button onClick={handleConfirmActivation}>
               Attiva Questionario
             </Button>
