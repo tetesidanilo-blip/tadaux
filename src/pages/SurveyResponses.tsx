@@ -11,6 +11,7 @@ import { ArrowLeft, Download, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Navbar } from "@/components/Navbar";
+import { normalizeSurveyData } from "@/lib/surveyUtils";
 
 interface Response {
   id: string;
@@ -76,9 +77,11 @@ const SurveyResponses = () => {
         return;
       }
 
+      // Normalize survey data to handle both 'text' and 'question' field names
+      const normalizedSurvey = normalizeSurveyData(surveyData);
       setSurvey({
-        ...surveyData,
-        sections: surveyData.sections as any[]
+        ...normalizedSurvey,
+        sections: normalizedSurvey.sections as any[]
       });
 
       // Load responses

@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import PublicSurvey from "./pages/PublicSurvey";
 import SurveyResponses from "./pages/SurveyResponses";
+import SurveyPreview from "./pages/SurveyPreview";
 import Community from "./pages/Community";
 import MyResearchRequests from "./pages/MyResearchRequests";
 import NotFound from "./pages/NotFound";
@@ -34,7 +35,8 @@ const App = () => (
               <Route path="/community" element={<ProtectedRoute><Community /></ProtectedRoute>} />
               <Route path="/my-research-requests" element={<ProtectedRoute><MyResearchRequests /></ProtectedRoute>} />
               <Route path="/survey/:shareToken" element={<PublicSurvey />} />
-              <Route path="/survey/:id/responses" element={<ProtectedRoute><SurveyResponses /></ProtectedRoute>} />
+              <Route path="/survey-preview/:id" element={<ProtectedRoute><SurveyPreview /></ProtectedRoute>} />
+              <Route path="/survey-responses/:id" element={<ProtectedRoute><SurveyResponses /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

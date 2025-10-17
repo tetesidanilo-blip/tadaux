@@ -541,7 +541,7 @@ const Dashboard = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => window.open(`/survey/${survey.share_token}`, "_blank")}
+                          onClick={() => navigate(`/survey-preview/${survey.id}`)}
                         >
                           <ExternalLink className="h-4 w-4 mr-1" />
                           {t("view")}

@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { CheckCircle2, XCircle, Copy } from "lucide-react";
+import { normalizeSurveyData } from "@/lib/surveyUtils";
 
 interface Question {
   text: string;
@@ -62,9 +63,11 @@ const PublicSurvey = () => {
       if (error) throw error;
 
       if (data) {
+        // Normalize survey data to handle both 'text' and 'question' field names
+        const normalizedData = normalizeSurveyData(data);
         setSurvey({
-          ...data,
-          sections: data.sections as unknown as Section[]
+          ...normalizedData,
+          sections: normalizedData.sections as unknown as Section[]
         });
         setLanguage(data.language as "en" | "it");
       }
