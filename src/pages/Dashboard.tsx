@@ -725,7 +725,7 @@ const Dashboard = () => {
       </Dialog>
 
       {/* Activation Dialog */}
-      <Dialog open={!!activateSurveyId} onOpenChange={(open) => {
+      <Dialog key={activateSurveyId || 'closed'} open={!!activateSurveyId} onOpenChange={(open) => {
         if (!open) {
           setCalendarOpen(false);
           setShowExpiry(false);
@@ -752,7 +752,7 @@ const Dashboard = () => {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Data di scadenza</Label>
-                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <Popover open={calendarOpen} onOpenChange={setCalendarOpen} modal={true}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -762,7 +762,7 @@ const Dashboard = () => {
                       {expiryDate ? format(expiryDate, "PPP") : <span>Seleziona data</span>}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0" align="start" onInteractOutside={() => setCalendarOpen(false)}>
                     <Calendar
                       mode="single"
                       selected={expiryDate}

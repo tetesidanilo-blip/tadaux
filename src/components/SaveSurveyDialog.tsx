@@ -370,7 +370,7 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
                 {t("noExpirationOption")}
               </Button>
             </div>
-            <Popover open={expiresPopoverOpen} onOpenChange={setExpiresPopoverOpen}>
+            <Popover open={expiresPopoverOpen} onOpenChange={setExpiresPopoverOpen} modal={true}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -383,7 +383,7 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
                   {expiresAt ? format(expiresAt, "PPP") : <span>{t("pickDate")}</span>}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0" align="start" onInteractOutside={() => setExpiresPopoverOpen(false)}>
                 <Calendar
                   mode="single"
                   selected={expiresAt}
