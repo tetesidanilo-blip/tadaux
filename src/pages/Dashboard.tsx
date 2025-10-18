@@ -19,7 +19,7 @@ import { SurveyGenerator } from "@/components/SurveyGenerator";
 import { Navbar } from "@/components/Navbar";
 import { QRCodeSVG } from "qrcode.react";
 import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar as DatePicker } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -519,12 +519,12 @@ const Dashboard = () => {
                     <div className="space-y-3">
                       <div className="text-sm text-muted-foreground">
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
+                          <CalendarIcon className="h-4 w-4" />
                           <span>{t("createdOn")} {format(new Date(survey.created_at), "PPP")}</span>
                         </div>
                         {survey.expires_at && (
                           <div className="flex items-center gap-2 mt-1">
-                            <Calendar className="h-4 w-4" />
+                            <CalendarIcon className="h-4 w-4" />
                             <span className={expired ? "text-destructive" : ""}>
                               {t("expiresOn")} {format(new Date(survey.expires_at), "PPP")}
                             </span>
@@ -532,7 +532,7 @@ const Dashboard = () => {
                         )}
                         {!survey.expires_at && (
                           <div className="flex items-center gap-2 mt-1">
-                            <Calendar className="h-4 w-4" />
+                            <CalendarIcon className="h-4 w-4" />
                             <span>{t("noExpiration")}</span>
                           </div>
                         )}
@@ -763,7 +763,7 @@ const Dashboard = () => {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start" onInteractOutside={() => setCalendarOpen(false)}>
-                    <Calendar
+                    <DatePicker
                       mode="single"
                       selected={expiryDate}
                       onSelect={(date) => {
