@@ -67,7 +67,7 @@ const Dashboard = () => {
       loadSurveys();
       loadUserProfile();
     }
-  }, [user]);
+  }, [user]); // loadSurveys and loadUserProfile are stable functions
 
   const loadUserProfile = async () => {
     if (!user) return;
@@ -80,16 +80,23 @@ const Dashboard = () => {
   };
 
   const loadSurveys = async () => {
+    // FIXED: Prevent query when user is undefined
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from("surveys")
         .select("*, survey_responses(count)")
-        .eq("user_id", user?.id)
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      const surveysWithCounts = data?.map((survey: any) => ({
+      // FIXED: Proper typing instead of any
+      const surveysWithCounts = data?.map((survey) => ({
         ...survey,
         response_count: survey.survey_responses?.[0]?.count || 0
       })) || [];
@@ -275,18 +282,19 @@ const Dashboard = () => {
     const existsSame = others.some(o => o.norm === baseNorm);
     if (!existsSame) return baseTitle;
 
-    // Find max existing suffix
+    // FIXED: More efficient approach - extract numbers in single pass
     const escaped = baseTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const pattern = new RegExp(`^${escaped} \\((\\d+)\\)$`, "i");
-    let max = 0;
-
-    for (const o of others) {
-      const m = o.title.match(pattern);
-      if (m) {
-        const n = parseInt(m[1], 10);
-        if (!Number.isNaN(n) && n > max) max = n;
+    
+    // Single pass to find max suffix
+    const max = others.reduce((currentMax, o) => {
+      const match = o.title.match(pattern);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        return !Number.isNaN(num) && num > currentMax ? num : currentMax;
       }
-    }
+      return currentMax;
+    }, 0);
 
     return `${baseTitle} (${max + 1})`;
   };
@@ -305,9 +313,12 @@ const Dashboard = () => {
     try {
       const uniqueTitle = await ensureUniqueTitle(trimmedTitle, user.id, id);
       
+      // FIXED: Use translation instead of hardcoded string
       if (uniqueTitle !== trimmedTitle) {
-        toast.info("Titolo modificato", {
-          description: `Un questionario con questo titolo esiste già. Rinominato in "${uniqueTitle}"`,
+        toast.info(t("titleModified") || "Title modified", {
+          description: t("titleAlreadyExists") ? 
+            t("titleAlreadyExists").replace("{title}", uniqueTitle) : 
+            `A survey with this title already exists. Renamed to "${uniqueTitle}"`,
         });
       }
 

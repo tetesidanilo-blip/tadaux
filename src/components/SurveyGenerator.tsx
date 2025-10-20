@@ -72,11 +72,17 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
   const [showSelectQuestionsDialog, setShowSelectQuestionsDialog] = useState(false);
   const { toast } = useToast();
 
-  // Autosave effect - saves after every change to sections
+  // FIXED: Debounced autosave with proper race condition handling
   useEffect(() => {
-    const saveDraft = async () => {
-      if (sections.length === 0) return;
-      
+    if (sections.length === 0) return;
+
+    // Clear any existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Debounce: wait 1 second after last change before saving
+    saveTimeoutRef.current = setTimeout(async () => {
       setIsSaving(true);
       try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -127,15 +133,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
       } finally {
         setIsSaving(false);
       }
-    };
-
-    // Clear any existing timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // Save immediately after each change
-    saveDraft();
+    }, 1000); // 1 second debounce
 
     return () => {
       if (saveTimeoutRef.current) {

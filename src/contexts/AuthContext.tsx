@@ -39,24 +39,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signUp = async (email: string, password: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl
-      }
-    });
-    return { error };
+    // FIXED: Add try-catch for network errors and exceptions
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl
+        }
+      });
+      return { error };
+    } catch (err) {
+      console.error("SignUp exception:", err);
+      return { error: err instanceof Error ? err : new Error("Unknown signup error") };
+    }
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+    // FIXED: Add try-catch for network errors and exceptions
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      return { error };
+    } catch (err) {
+      console.error("SignIn exception:", err);
+      return { error: err instanceof Error ? err : new Error("Unknown signin error") };
+    }
   };
 
   const signOut = async () => {
