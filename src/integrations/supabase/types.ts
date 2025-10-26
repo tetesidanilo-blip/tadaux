@@ -53,6 +53,47 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          description: string | null
+          id: string
+          reference_id: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          transaction_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       participant_applications: {
         Row: {
           created_at: string
@@ -104,6 +145,7 @@ export type Database = {
           available_for_research: boolean | null
           country: string | null
           created_at: string
+          credits: number
           full_name: string | null
           id: string
           interests: string[] | null
@@ -119,6 +161,7 @@ export type Database = {
           available_for_research?: boolean | null
           country?: string | null
           created_at?: string
+          credits?: number
           full_name?: string | null
           id: string
           interests?: string[] | null
@@ -134,6 +177,7 @@ export type Database = {
           available_for_research?: boolean | null
           country?: string | null
           created_at?: string
+          credits?: number
           full_name?: string | null
           id?: string
           interests?: string[] | null
@@ -218,6 +262,109 @@ export type Database = {
           },
         ]
       }
+      stripe_payments: {
+        Row: {
+          amount_cents: number
+          completed_at: string | null
+          created_at: string
+          credits_purchased: number
+          id: string
+          metadata: Json | null
+          status: string
+          stripe_payment_intent_id: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          completed_at?: string | null
+          created_at?: string
+          credits_purchased: number
+          id?: string
+          metadata?: Json | null
+          status?: string
+          stripe_payment_intent_id: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          completed_at?: string | null
+          created_at?: string
+          credits_purchased?: number
+          id?: string
+          metadata?: Json | null
+          status?: string
+          stripe_payment_intent_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stripe_payments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      survey_clones: {
+        Row: {
+          cloned_at: string
+          cloned_survey_id: string
+          cloner_id: string
+          credits_paid: number
+          id: string
+          original_creator_id: string
+          template_id: string | null
+        }
+        Insert: {
+          cloned_at?: string
+          cloned_survey_id: string
+          cloner_id: string
+          credits_paid?: number
+          id?: string
+          original_creator_id: string
+          template_id?: string | null
+        }
+        Update: {
+          cloned_at?: string
+          cloned_survey_id?: string
+          cloner_id?: string
+          credits_paid?: number
+          id?: string
+          original_creator_id?: string
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_clones_cloned_survey_id_fkey"
+            columns: ["cloned_survey_id"]
+            isOneToOne: true
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_clones_cloner_id_fkey"
+            columns: ["cloner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_clones_original_creator_id_fkey"
+            columns: ["original_creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_clones_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "survey_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       survey_responses: {
         Row: {
           id: string
@@ -242,6 +389,60 @@ export type Database = {
             foreignKeyName: "survey_responses_survey_id_fkey"
             columns: ["survey_id"]
             isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      survey_templates: {
+        Row: {
+          created_at: string
+          creator_id: string
+          credit_price: number
+          id: string
+          is_free: boolean
+          keywords: string[] | null
+          survey_id: string
+          times_cloned: number
+          total_credits_earned: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          credit_price?: number
+          id?: string
+          is_free?: boolean
+          keywords?: string[] | null
+          survey_id: string
+          times_cloned?: number
+          total_credits_earned?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          credit_price?: number
+          id?: string
+          is_free?: boolean
+          keywords?: string[] | null
+          survey_id?: string
+          times_cloned?: number
+          total_credits_earned?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_templates_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_templates_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: true
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
@@ -314,7 +515,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      extract_survey_keywords: {
+        Args: { description: string; survey_data: Json; title: string }
+        Returns: string[]
+      }
+      update_user_credits: {
+        Args: {
+          _amount: number
+          _description?: string
+          _reference_id?: string
+          _transaction_type: string
+          _user_id: string
+        }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
