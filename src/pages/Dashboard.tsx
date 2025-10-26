@@ -11,7 +11,8 @@ import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Calendar as CalendarIcon, Copy, ExternalLink, Eye, Power, PowerOff, Trash2, Plus, BarChart, Clock, Mail, QrCode, Edit, AlertCircle, Crown, Users, Info } from "lucide-react";
+import { Calendar as CalendarIcon, Copy, ExternalLink, Eye, Power, PowerOff, Trash2, Plus, BarChart, Clock, Mail, QrCode, Edit, AlertCircle, Crown, Users, Info, Store } from "lucide-react";
+import { CreditsDisplay } from "@/components/CreditsDisplay";
 import { CreateResearchRequestDialog } from "@/components/CreateResearchRequestDialog";
 import { toast } from "sonner";
 import { format, addDays } from "date-fns";
@@ -50,6 +51,7 @@ const Dashboard = () => {
   const [editingTitleValue, setEditingTitleValue] = useState("");
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [userCredits, setUserCredits] = useState(0);
   const [findParticipantsSurveyId, setFindParticipantsSurveyId] = useState<string | null>(null);
   const [createRequestDialogOpen, setCreateRequestDialogOpen] = useState(false);
   const [activateSurveyId, setActivateSurveyId] = useState<string | null>(null);
@@ -76,7 +78,10 @@ const Dashboard = () => {
       .select("*")
       .eq("id", user.id)
       .single();
-    if (data) setUserProfile(data);
+    if (data) {
+      setUserProfile(data);
+      setUserCredits(data.credits || 0);
+    }
   };
 
   const loadSurveys = async () => {
@@ -379,7 +384,16 @@ const Dashboard = () => {
       <Navbar />
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">{t("myQuestionnaires")}</h1>
+          <div>
+            <h1 className="text-4xl font-bold mb-2">{t("myQuestionnaires")}</h1>
+            <div className="flex items-center gap-3">
+              <CreditsDisplay credits={userCredits} />
+              <Button variant="outline" size="sm" onClick={() => navigate('/community?tab=qshop')}>
+                <Store className="h-4 w-4 mr-2" />
+                Vai al Q Shop
+              </Button>
+            </div>
+          </div>
           <Button 
             onClick={() => setShowGenerator(true)}
             size="lg"

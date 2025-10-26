@@ -3,9 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Languages, LogOut, LayoutDashboard, FileText, User, Crown, Zap, Users, MessageSquare } from "lucide-react";
+import { Languages, LogOut, LayoutDashboard, FileText, User, Crown, Zap, Users, MessageSquare, Store } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { CreditsDisplay } from "@/components/CreditsDisplay";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,10 +24,12 @@ export const Navbar = () => {
   const location = useLocation();
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const [userTier, setUserTier] = useState<'free' | 'pro' | 'business'>('free');
+  const [userCredits, setUserCredits] = useState(0);
 
   useEffect(() => {
     if (user) {
       loadUserTier();
+      loadUserCredits();
     }
   }, [user]);
 
@@ -34,12 +37,23 @@ export const Navbar = () => {
     if (!user) return;
     const { data } = await supabase
       .from("profiles")
-      .select("subscription_tier")
+      .select("subscription_tier, credits")
       .eq("id", user.id)
       .single();
     if (data) {
       setUserTier(data.subscription_tier as 'free' | 'pro' | 'business' || 'free');
+      setUserCredits(data.credits || 0);
     }
+  };
+
+  const loadUserCredits = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("credits")
+      .eq("id", user.id)
+      .single();
+    if (data) setUserCredits(data.credits || 0);
   };
 
   const handleLogout = async () => {
@@ -95,7 +109,7 @@ export const Navbar = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <div className="flex items-center justify-start gap-2 p-2">
+                  <div className="flex items-center justify-between gap-2 p-2">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium">{user.email}</p>
                       <Badge className={currentTierConfig.className} variant={userTier === 'free' ? 'outline' : 'default'}>
@@ -103,6 +117,7 @@ export const Navbar = () => {
                         {currentTierConfig.label}
                       </Badge>
                     </div>
+                    <CreditsDisplay credits={userCredits} />
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate("/profile")}>
@@ -116,6 +131,10 @@ export const Navbar = () => {
                   <DropdownMenuItem onClick={() => navigate("/community")}>
                     <Users className="mr-2 h-4 w-4" />
                     <span>Community</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/community?tab=qshop")}>
+                    <Store className="mr-2 h-4 w-4" />
+                    <span>Q Shop</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/my-research-requests")}>
                     <MessageSquare className="mr-2 h-4 w-4" />

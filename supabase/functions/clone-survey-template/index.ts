@@ -1,0 +1,209 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+interface CloneRequest {
+  templateId: string
+  customTitle?: string
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
+  const supabaseClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  )
+
+  try {
+    // 1. Autentica utente
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+        status: 401, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      })
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
+    
+    if (authError || !user) {
+      console.error('Auth error:', authError)
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+        status: 401, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      })
+    }
+
+    const { templateId, customTitle }: CloneRequest = await req.json()
+
+    console.log(`[Clone] User ${user.id} cloning template ${templateId}`)
+
+    // 2. Ottieni template e survey originale
+    const { data: template, error: templateError } = await supabaseClient
+      .from('survey_templates')
+      .select(`
+        *,
+        surveys!inner(*)
+      `)
+      .eq('id', templateId)
+      .single()
+
+    if (templateError || !template) {
+      console.error('Template not found:', templateError)
+      return new Response(JSON.stringify({ error: 'Template not found' }), { 
+        status: 404, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      })
+    }
+
+    // 3. Verifica crediti utente
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('credits, subscription_tier')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError || !profile) {
+      console.error('Profile error:', profileError)
+      return new Response(JSON.stringify({ error: 'Profile not found' }), { 
+        status: 404, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      })
+    }
+
+    // Verifica saldo
+    if (!template.is_free && profile.credits < template.credit_price) {
+      console.log(`Insufficient credits: required ${template.credit_price}, available ${profile.credits}`)
+      return new Response(JSON.stringify({ 
+        error: 'Insufficient credits',
+        required: template.credit_price,
+        available: profile.credits
+      }), { 
+        status: 402, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      })
+    }
+
+    // 4. Clona il survey
+    const originalSurvey = template.surveys
+    const newShareToken = crypto.randomUUID()
+    const clonedTitle = customTitle?.trim() || `${originalSurvey.title} (Copia)`
+    
+    const { data: clonedSurvey, error: cloneError } = await supabaseClient
+      .from('surveys')
+      .insert({
+        user_id: user.id,
+        title: clonedTitle,
+        description: originalSurvey.description,
+        sections: originalSurvey.sections,
+        language: originalSurvey.language,
+        share_token: newShareToken,
+        status: 'draft',
+        is_active: false,
+        expires_at: null,
+        visible_in_community: profile.subscription_tier === 'free',
+        responses_public: false
+      })
+      .select()
+      .single()
+
+    if (cloneError) {
+      console.error('Clone error:', cloneError)
+      return new Response(JSON.stringify({ error: 'Failed to clone survey', details: cloneError.message }), { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      })
+    }
+
+    console.log(`[Clone] Survey cloned successfully: ${clonedSurvey.id}`)
+
+    // 5. Gestisci transazione crediti
+    if (!template.is_free) {
+      // Addebita al cloner
+      const { error: debitError } = await supabaseClient.rpc('update_user_credits', {
+        _user_id: user.id,
+        _amount: -template.credit_price,
+        _transaction_type: 'template_purchased',
+        _reference_id: templateId,
+        _description: `Acquistato template: ${originalSurvey.title}`
+      })
+
+      if (debitError) {
+        console.error('Debit error:', debitError)
+      } else {
+        console.log(`[Credits] Debit ${template.credit_price} from ${user.id}`)
+      }
+    }
+
+    // Accredita al creatore (sempre, anche gratis)
+    const creatorReward = profile.subscription_tier === 'free' ? 10 : 20
+    const { error: creditError } = await supabaseClient.rpc('update_user_credits', {
+      _user_id: template.creator_id,
+      _amount: creatorReward,
+      _transaction_type: 'template_used',
+      _reference_id: templateId,
+      _description: `Template utilizzato: ${originalSurvey.title}`
+    })
+
+    if (creditError) {
+      console.error('Credit error:', creditError)
+    } else {
+      console.log(`[Credits] Credit ${creatorReward} to creator ${template.creator_id}`)
+    }
+
+    // 6. Aggiorna statistiche template
+    await supabaseClient
+      .from('survey_templates')
+      .update({ 
+        times_cloned: template.times_cloned + 1,
+        total_credits_earned: template.total_credits_earned + (template.is_free ? 0 : template.credit_price),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', templateId)
+
+    // 7. Registra clone tracking
+    await supabaseClient
+      .from('survey_clones')
+      .insert({
+        template_id: templateId,
+        cloned_survey_id: clonedSurvey.id,
+        cloner_id: user.id,
+        original_creator_id: template.creator_id,
+        credits_paid: template.is_free ? 0 : template.credit_price
+      })
+
+    console.log(`[Clone] Transaction completed successfully`)
+
+    return new Response(JSON.stringify({ 
+      success: true,
+      clonedSurvey: {
+        id: clonedSurvey.id,
+        title: clonedSurvey.title,
+        share_token: clonedSurvey.share_token
+      },
+      creditsSpent: template.is_free ? 0 : template.credit_price,
+      creatorRewarded: creatorReward
+    }), { 
+      status: 200, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    })
+
+  } catch (error) {
+    console.error('Unexpected error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error', 
+      details: errorMessage
+    }), { 
+      status: 500, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    })
+  }
+})

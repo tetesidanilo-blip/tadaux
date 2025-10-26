@@ -12,7 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
 import { Navbar } from "@/components/Navbar";
-import { Crown, Zap, Check, X } from "lucide-react";
+import { Crown, Zap, Check, X, Coins, TrendingUp } from "lucide-react";
+import { CreditsDisplay } from "@/components/CreditsDisplay";
 
 const COUNTRIES = ["Italy", "United States", "United Kingdom", "Germany", "France", "Spain", "Canada", "Australia", "Other"];
 const INTEREST_OPTIONS = ["Gaming", "E-commerce", "B2B", "Healthcare", "Education", "Finance", "Travel", "Food & Beverage", "Technology", "Entertainment"];
@@ -33,6 +34,8 @@ export default function Profile() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [userCredits, setUserCredits] = useState(0);
   const [profile, setProfile] = useState<ProfileData>({
     full_name: "",
     subscription_tier: "free",
@@ -49,8 +52,21 @@ export default function Profile() {
   useEffect(() => {
     if (user) {
       loadProfile();
+      loadCreditTransactions();
     }
   }, [user]);
+
+  const loadCreditTransactions = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("credit_transactions")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    
+    if (data) setTransactions(data);
+  };
 
   const loadProfile = async () => {
     if (!user) return;
@@ -82,6 +98,7 @@ export default function Profile() {
         available_for_research: data.available_for_research || false,
         profile_completed: data.profile_completed || false,
       });
+      setUserCredits(data.credits || 0);
     }
   };
 
@@ -172,6 +189,55 @@ export default function Profile() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
+            {/* Credits Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Coins className="h-5 w-5 text-amber-500" />
+                  I Tuoi Crediti
+                </CardTitle>
+                <CardDescription>Usa i crediti nel Q Shop</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-center">
+                  <CreditsDisplay credits={userCredits} className="text-3xl" showTooltip={false} />
+                </div>
+                
+                <div className="space-y-2 pt-4 border-t">
+                  <p className="font-semibold text-sm flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Come Guadagnare Crediti:
+                  </p>
+                  <ul className="space-y-1 text-sm text-muted-foreground">
+                    <li>• 10 crediti: Registrazione iniziale</li>
+                    <li>• 10 crediti: Per ogni campo profilo completato</li>
+                    <li>• 10-20 crediti: Template utilizzato da altri</li>
+                  </ul>
+                </div>
+
+                {transactions.length > 0 && (
+                  <div className="space-y-2 pt-4 border-t">
+                    <p className="font-semibold text-sm">Ultime Transazioni:</p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {transactions.map((tx) => (
+                        <div key={tx.id} className="flex justify-between items-start text-xs p-2 rounded bg-muted/50">
+                          <div className="flex-1">
+                            <p className="font-medium">{tx.description}</p>
+                            <p className="text-muted-foreground">
+                              {new Date(tx.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <Badge variant={tx.amount > 0 ? "default" : "secondary"} className="text-xs">
+                            {tx.amount > 0 ? '+' : ''}{tx.amount}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Subscription Card */}
             <Card>
               <CardHeader>
@@ -234,7 +300,7 @@ export default function Profile() {
             </Card>
 
             {/* Profile Form */}
-            <Card className="md:col-span-2">
+            <Card className="md:col-span-1">
               <CardHeader>
                 <CardTitle>Complete Your Profile</CardTitle>
                 <CardDescription>

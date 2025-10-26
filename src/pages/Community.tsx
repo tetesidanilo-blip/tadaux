@@ -3,13 +3,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ResearchRequestCard } from "@/components/ResearchRequestCard";
 import { ApplyToResearchDialog } from "@/components/ApplyToResearchDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Users, MessageCircle, ExternalLink, FileText } from "lucide-react";
+import { Users, MessageCircle, ExternalLink, FileText, Store, Search } from "lucide-react";
 import { PublicSurveyCard } from "@/components/PublicSurveyCard";
+import { TemplateCard } from "@/components/TemplateCard";
+import { CloneTemplateDialog } from "@/components/CloneTemplateDialog";
 
 interface ResearchRequest {
   id: string;
@@ -55,11 +58,31 @@ interface PublicSurvey {
   };
 }
 
+interface Template {
+  id: string;
+  credit_price: number;
+  is_free: boolean;
+  times_cloned: number;
+  surveys: {
+    title: string;
+    description: string | null;
+    sections: any;
+  };
+  profiles: {
+    full_name: string | null;
+  };
+}
+
 export default function Community() {
   const [activeRequests, setActiveRequests] = useState<ResearchRequest[]>([]);
   const [myApplications, setMyApplications] = useState<Application[]>([]);
   const [communityGroups, setCommunityGroups] = useState<CommunityGroup[]>([]);
   const [publicSurveys, setPublicSurveys] = useState<PublicSurvey[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
+  const [userCredits, setUserCredits] = useState(0);
   const [selectedRequest, setSelectedRequest] = useState<ResearchRequest | null>(null);
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -74,11 +97,44 @@ export default function Community() {
     setLoading(true);
     await Promise.all([
       fetchPublicSurveys(),
+      fetchTemplates(),
       fetchActiveRequests(),
       fetchMyApplications(),
-      fetchCommunityGroups()
+      fetchCommunityGroups(),
+      fetchUserCredits()
     ]);
     setLoading(false);
+  };
+
+  const fetchTemplates = async () => {
+    const { data, error } = await supabase
+      .from("survey_templates")
+      .select(`
+        id,
+        credit_price,
+        is_free,
+        times_cloned,
+        surveys!inner(title, description, sections, is_active, status),
+        profiles!survey_templates_creator_id_fkey(full_name)
+      `)
+      .order("times_cloned", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching templates:", error);
+    } else {
+      setTemplates(data || []);
+    }
+  };
+
+  const fetchUserCredits = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("credits")
+      .eq("id", user.id)
+      .single();
+    
+    if (data) setUserCredits(data.credits || 0);
   };
 
   const fetchPublicSurveys = async () => {
@@ -165,6 +221,19 @@ export default function Community() {
     setApplyDialogOpen(true);
   };
 
+  const handleCloneTemplate = (template: Template) => {
+    setSelectedTemplate(template);
+    setCloneDialogOpen(true);
+  };
+
+  const filteredTemplates = searchTerm.trim().length >= 3 
+    ? templates.filter(t => {
+        const search = searchTerm.toLowerCase();
+        return t.surveys.title.toLowerCase().includes(search) ||
+               t.surveys.description?.toLowerCase().includes(search);
+      })
+    : templates;
+
   const platformIcons = {
     whatsapp: "💬",
     discord: "🎮",
@@ -199,6 +268,10 @@ export default function Community() {
         <Tabs defaultValue="surveys" className="space-y-6">
           <TabsList>
             <TabsTrigger value="surveys">Public Surveys</TabsTrigger>
+            <TabsTrigger value="qshop">
+              <Store className="h-4 w-4 mr-2" />
+              Q Shop
+            </TabsTrigger>
             <TabsTrigger value="requests">Active Requests</TabsTrigger>
             <TabsTrigger value="applications">My Applications</TabsTrigger>
             <TabsTrigger value="groups">Community Groups</TabsTrigger>
@@ -228,6 +301,50 @@ export default function Community() {
                     responsesPublic={survey.responses_public}
                     creatorName={survey.profiles?.full_name || null}
                     creatorTier={survey.profiles?.subscription_tier || 'free'}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="qshop" className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold mb-1">Q Shop</h2>
+                <p className="text-sm text-muted-foreground">
+                  Clona template di questionari creati dalla community
+                </p>
+              </div>
+              <div className="relative w-full sm:w-96">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Cerca template..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {filteredTemplates.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">
+                    {searchTerm ? "Nessun template trovato" : "Nessun template disponibile"}
+                  </h3>
+                  <p className="text-muted-foreground">
+                    {searchTerm ? "Prova con altri termini di ricerca" : "I template della community appariranno qui"}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredTemplates.map((template) => (
+                  <TemplateCard
+                    key={template.id}
+                    template={template}
+                    onClone={() => handleCloneTemplate(template)}
                   />
                 ))}
               </div>
@@ -350,6 +467,19 @@ export default function Community() {
           requestId={selectedRequest.id}
           requestTitle={selectedRequest.title}
           onSuccess={fetchMyApplications}
+        />
+      )}
+
+      {selectedTemplate && (
+        <CloneTemplateDialog
+          open={cloneDialogOpen}
+          onOpenChange={setCloneDialogOpen}
+          template={selectedTemplate}
+          userCredits={userCredits}
+          onSuccess={() => {
+            fetchUserCredits();
+            fetchTemplates();
+          }}
         />
       )}
     </div>

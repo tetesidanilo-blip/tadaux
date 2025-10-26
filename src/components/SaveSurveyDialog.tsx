@@ -13,7 +13,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarIcon, Info, AlertTriangle } from "lucide-react";
+import { CalendarIcon, Info, AlertTriangle, Store } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -42,6 +42,8 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
   const [responsesPublic, setResponsesPublic] = useState(false);
   const [legalConsent, setLegalConsent] = useState(false);
   const [expiresPopoverOpen, setExpiresPopoverOpen] = useState(false);
+  const [publishAsTemplate, setPublishAsTemplate] = useState(false);
+  const [templatePrice, setTemplatePrice] = useState(0);
 
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -269,6 +271,22 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
         }
       }
 
+      // Gestisci template per PRO/Business
+      if (userTier !== 'free' && publishAsTemplate && surveyId) {
+        const { error: templateError } = await supabase
+          .from('survey_templates')
+          .insert({
+            survey_id: surveyId,
+            creator_id: user.id,
+            is_free: templatePrice === 0,
+            credit_price: templatePrice
+          });
+
+        if (templateError) {
+          console.error('Error creating template:', templateError);
+        }
+      }
+
       const surveyLink = `${window.location.origin}/survey/${shareToken}`;
       
       toast.success(t("surveySaved"), {
@@ -492,6 +510,70 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
                 </div>
               )}
             </div>
+            
+            {/* Q Shop Template Section - Only PRO/Business */}
+            {userTier !== 'free' && (
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Store className="h-4 w-4" />
+                  Pubblica nel Q Shop
+                </h3>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="publish-template"
+                    checked={publishAsTemplate}
+                    onCheckedChange={(checked) => setPublishAsTemplate(checked as boolean)}
+                  />
+                  <Label htmlFor="publish-template" className="text-sm font-normal cursor-pointer">
+                    Pubblica come template nel Q Shop
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>Altri utenti potranno clonare il tuo questionario. Guadagni 20 crediti ogni volta che viene utilizzato.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+
+                {publishAsTemplate && (
+                  <div className="pl-6 space-y-2">
+                    <Label htmlFor="template-price" className="text-sm">
+                      Prezzo (0-100 crediti, 0 = gratis)
+                    </Label>
+                    <Input
+                      id="template-price"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={templatePrice}
+                      onChange={(e) => setTemplatePrice(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                      className="w-32"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {templatePrice === 0 
+                        ? "Template gratuito: guadagni 20 crediti ogni volta che viene clonato"
+                        : `Template a pagamento: guadagni 20 crediti + ${templatePrice} crediti pagati dall'utente`
+                      }
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* FREE tier info */}
+            {userTier === 'free' && (
+              <div className="border-t pt-4">
+                <Alert>
+                  <Store className="h-4 w-4" />
+                  <AlertDescription>
+                    I tuoi questionari saranno automaticamente pubblicati come template gratuiti nel Q Shop. Guadagni 10 crediti ogni volta che vengono utilizzati.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 pt-4">
