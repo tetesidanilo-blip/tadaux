@@ -519,6 +519,10 @@ export type Database = {
         Args: { description: string; survey_data: Json; title: string }
         Returns: string[]
       }
+      extract_survey_keywords_v2: {
+        Args: { description: string; survey_data: Json; title: string }
+        Returns: string[]
+      }
       update_user_credits: {
         Args: {
           _amount: number

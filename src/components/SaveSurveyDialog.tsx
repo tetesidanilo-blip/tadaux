@@ -17,6 +17,7 @@ import { CalendarIcon, Info, AlertTriangle, Store } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { z } from "zod";
 
 interface Section {
   name: string;
@@ -31,6 +32,17 @@ interface SaveSurveyDialogProps {
   editingSurveyId?: string | null;
 }
 
+// Zod schema for template pricing validation
+const templatePricingSchema = z.object({
+  templatePrice: z.number()
+    .int('Il prezzo deve essere un numero intero')
+    .min(0, 'Il prezzo non può essere negativo')
+    .max(500, 'Il prezzo massimo è 500 crediti')
+    .refine((val) => val === 0 || val >= 10, {
+      message: 'Il prezzo minimo per template a pagamento è 10 crediti'
+    })
+});
+
 export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage, editingSurveyId }: SaveSurveyDialogProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -44,6 +56,7 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
   const [expiresPopoverOpen, setExpiresPopoverOpen] = useState(false);
   const [publishAsTemplate, setPublishAsTemplate] = useState(false);
   const [templatePrice, setTemplatePrice] = useState(0);
+  const [priceError, setPriceError] = useState<string | null>(null);
 
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -139,6 +152,19 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
         description: "Devi confermare di assumerti la responsabilità delle risposte pubblicate"
       });
       return;
+    }
+
+    // Validate template pricing
+    if (userTier !== 'free' && publishAsTemplate) {
+      const validation = templatePricingSchema.safeParse({ templatePrice });
+      if (!validation.success) {
+        setPriceError(validation.error.errors[0].message);
+        toast.error("Errore nel prezzo", {
+          description: validation.error.errors[0].message
+        });
+        return;
+      }
+      setPriceError(null);
     }
 
     if (!user) {

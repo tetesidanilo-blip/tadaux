@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { Users, MessageCircle, ExternalLink, FileText, Store, Search } from "luc
 import { PublicSurveyCard } from "@/components/PublicSurveyCard";
 import { TemplateCard } from "@/components/TemplateCard";
 import { CloneTemplateDialog } from "@/components/CloneTemplateDialog";
+import { useInfiniteQuery } from "@tanstack/react-query";
 
 interface ResearchRequest {
   id: string;
@@ -73,12 +74,13 @@ interface Template {
   };
 }
 
+const TEMPLATES_PER_PAGE = 12;
+
 export default function Community() {
   const [activeRequests, setActiveRequests] = useState<ResearchRequest[]>([]);
   const [myApplications, setMyApplications] = useState<Application[]>([]);
   const [communityGroups, setCommunityGroups] = useState<CommunityGroup[]>([]);
   const [publicSurveys, setPublicSurveys] = useState<PublicSurvey[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
@@ -97,7 +99,6 @@ export default function Community() {
     setLoading(true);
     await Promise.all([
       fetchPublicSurveys(),
-      fetchTemplates(),
       fetchActiveRequests(),
       fetchMyApplications(),
       fetchCommunityGroups(),
@@ -106,25 +107,65 @@ export default function Community() {
     setLoading(false);
   };
 
-  const fetchTemplates = async () => {
-    const { data, error } = await supabase
-      .from("survey_templates")
-      .select(`
-        id,
-        credit_price,
-        is_free,
-        times_cloned,
-        surveys!inner(title, description, sections, is_active, status),
-        profiles!survey_templates_creator_id_fkey(full_name)
-      `)
-      .order("times_cloned", { ascending: false });
+  // Infinite scroll query for templates
+  const { 
+    data: templatesData, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage,
+    isLoading: isLoadingTemplates
+  } = useInfiniteQuery({
+    queryKey: ['templates', searchTerm],
+    queryFn: async ({ pageParam = 0 }) => {
+      const from = pageParam * TEMPLATES_PER_PAGE;
+      const to = from + TEMPLATES_PER_PAGE - 1;
+      
+      let query = supabase
+        .from("survey_templates")
+        .select(`
+          id,
+          credit_price,
+          is_free,
+          times_cloned,
+          surveys!inner(title, description, sections, is_active, status),
+          profiles!survey_templates_creator_id_fkey(full_name)
+        `)
+        .order("times_cloned", { ascending: false })
+        .order("created_at", { ascending: false })
+        .range(from, to);
+      
+      // Search by keywords if searchTerm >= 3 characters
+      if (searchTerm.trim().length >= 3) {
+        query = query.contains('keywords', [searchTerm.toLowerCase()]);
+      }
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+    getNextPageParam: (lastPage, pages) => 
+      lastPage.length === TEMPLATES_PER_PAGE ? pages.length : undefined,
+    initialPageParam: 0,
+    enabled: !loading
+  });
 
-    if (error) {
-      console.error("Error fetching templates:", error);
-    } else {
-      setTemplates(data || []);
-    }
-  };
+  // Flatten pages into single array
+  const templates = templatesData?.pages.flat() || [];
+
+  // Infinite scroll observer
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useCallback((node: HTMLDivElement | null) => {
+    if (isFetchingNextPage) return;
+    if (observerRef.current) observerRef.current.disconnect();
+    
+    observerRef.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasNextPage) {
+        fetchNextPage();
+      }
+    });
+    
+    if (node) observerRef.current.observe(node);
+  }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
 
   const fetchUserCredits = async () => {
     if (!user) return;
@@ -226,14 +267,6 @@ export default function Community() {
     setCloneDialogOpen(true);
   };
 
-  const filteredTemplates = searchTerm.trim().length >= 3 
-    ? templates.filter(t => {
-        const search = searchTerm.toLowerCase();
-        return t.surveys.title.toLowerCase().includes(search) ||
-               t.surveys.description?.toLowerCase().includes(search);
-      })
-    : templates;
-
   const platformIcons = {
     whatsapp: "💬",
     discord: "🎮",
@@ -318,7 +351,7 @@ export default function Community() {
               <div className="relative w-full sm:w-96">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Cerca template..."
+                  placeholder="Cerca template (min. 3 caratteri)..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -326,7 +359,11 @@ export default function Community() {
               </div>
             </div>
 
-            {filteredTemplates.length === 0 ? (
+            {isLoadingTemplates ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            ) : templates.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
                   <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -339,15 +376,34 @@ export default function Community() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredTemplates.map((template) => (
-                  <TemplateCard
-                    key={template.id}
-                    template={template}
-                    onClone={() => handleCloneTemplate(template)}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {templates.map((template) => (
+                    <TemplateCard
+                      key={template.id}
+                      template={template}
+                      onClone={() => handleCloneTemplate(template)}
+                    />
+                  ))}
+                </div>
+                
+                {/* Infinite scroll trigger */}
+                {hasNextPage && (
+                  <div ref={loadMoreRef} className="py-8 flex justify-center">
+                    {isFetchingNextPage ? (
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    ) : (
+                      <Button 
+                        variant="outline" 
+                        onClick={() => fetchNextPage()}
+                        disabled={!hasNextPage}
+                      >
+                        Carica altri template
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
 
@@ -478,7 +534,6 @@ export default function Community() {
           userCredits={userCredits}
           onSuccess={() => {
             fetchUserCredits();
-            fetchTemplates();
           }}
         />
       )}

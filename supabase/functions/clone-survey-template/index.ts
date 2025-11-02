@@ -1,9 +1,33 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+// Dynamic CORS whitelist
+const getAllowedOrigins = (): string[] => {
+  const envOrigins = Deno.env.get('ALLOWED_ORIGINS');
+  if (envOrigins) {
+    return envOrigins.split(',').map(o => o.trim());
+  }
+  // Fallback per sviluppo locale
+  const isDev = Deno.env.get('ENVIRONMENT') !== 'production';
+  if (isDev) {
+    return ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:8080'];
+  }
+  return [];
+};
+
+const getCorsHeaders = (origin: string | null) => {
+  const allowedOrigins = getAllowedOrigins();
+  const isAllowed = origin && (allowedOrigins.includes(origin) || allowedOrigins.length === 0);
+  
+  if (!isAllowed && origin) {
+    console.warn(`[CORS] Rejected origin: ${origin}`);
+  }
+  
+  return {
+    'Access-Control-Allow-Origin': isAllowed && origin ? origin : (allowedOrigins[0] || '*'),
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Credentials': 'true'
+  };
+};
 
 interface CloneRequest {
   templateId: string
@@ -11,6 +35,9 @@ interface CloneRequest {
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('Origin');
+  const corsHeaders = getCorsHeaders(origin);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
