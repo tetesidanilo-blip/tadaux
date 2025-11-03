@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Coins, User, TrendingUp } from "lucide-react";
+import { FileText, Coins, User, TrendingUp, Eye } from "lucide-react";
+import { TemplatePreviewDialog } from "./TemplatePreviewDialog";
 
 interface TemplateCardProps {
   template: {
@@ -19,9 +21,12 @@ interface TemplateCardProps {
     };
   };
   onClone: () => void;
+  userCredits?: number;
 }
 
-export const TemplateCard = ({ template, onClone }: TemplateCardProps) => {
+export const TemplateCard = ({ template, onClone, userCredits }: TemplateCardProps) => {
+  const [previewOpen, setPreviewOpen] = useState(false);
+  
   const questionCount = template.surveys.sections?.reduce(
     (acc: number, section: any) => acc + (section.questions?.length || 0), 
     0
@@ -71,11 +76,25 @@ export const TemplateCard = ({ template, onClone }: TemplateCardProps) => {
             </span>
           </div>
 
-          <Button onClick={onClone} className="w-full">
-            Usa questo Template
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setPreviewOpen(true)} className="flex-1">
+              <Eye className="h-4 w-4 mr-1" />
+              Anteprima
+            </Button>
+            <Button onClick={onClone} className="flex-1">
+              Usa Template
+            </Button>
+          </div>
         </div>
       </CardContent>
+
+      <TemplatePreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        template={template}
+        onClone={onClone}
+        userCredits={userCredits}
+      />
     </Card>
   );
 };

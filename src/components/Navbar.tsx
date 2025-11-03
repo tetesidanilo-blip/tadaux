@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Languages, LogOut, LayoutDashboard, FileText, User, Crown, Zap, Users, MessageSquare, Store } from "lucide-react";
+import { Languages, LogOut, LayoutDashboard, FileText, User, Crown, Zap, Users, MessageSquare, Store, Briefcase } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CreditsDisplay } from "@/components/CreditsDisplay";
@@ -136,6 +136,12 @@ export const Navbar = () => {
                     <Store className="mr-2 h-4 w-4" />
                     <span>Q Shop</span>
                   </DropdownMenuItem>
+                  {userTier === 'pro' && (
+                    <DropdownMenuItem onClick={() => navigate("/my-templates")}>
+                      <Briefcase className="mr-2 h-4 w-4" />
+                      <span>My Templates</span>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => navigate("/my-research-requests")}>
                     <MessageSquare className="mr-2 h-4 w-4" />
                     <span>My Requests</span>

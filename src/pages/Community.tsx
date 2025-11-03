@@ -383,6 +383,7 @@ export default function Community() {
                       key={template.id}
                       template={template}
                       onClone={() => handleCloneTemplate(template)}
+                      userCredits={userCredits}
                     />
                   ))}
                 </div>
