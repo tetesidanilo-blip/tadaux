@@ -150,6 +150,7 @@ export type Database = {
           id: string
           interests: string[] | null
           profile_completed: boolean | null
+          profile_fields_rewarded: Json | null
           subscription_expires_at: string | null
           subscription_tier: string | null
           surveys_created_count: number | null
@@ -166,6 +167,7 @@ export type Database = {
           id: string
           interests?: string[] | null
           profile_completed?: boolean | null
+          profile_fields_rewarded?: Json | null
           subscription_expires_at?: string | null
           subscription_tier?: string | null
           surveys_created_count?: number | null
@@ -182,6 +184,7 @@ export type Database = {
           id?: string
           interests?: string[] | null
           profile_completed?: boolean | null
+          profile_fields_rewarded?: Json | null
           subscription_expires_at?: string | null
           subscription_tier?: string | null
           surveys_created_count?: number | null

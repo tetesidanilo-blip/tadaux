@@ -14,6 +14,7 @@ import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
 import { Navbar } from "@/components/Navbar";
 import { Crown, Zap, Check, X, Coins, TrendingUp } from "lucide-react";
 import { CreditsDisplay } from "@/components/CreditsDisplay";
+import { CreditHistory } from "@/components/CreditHistory";
 
 const COUNTRIES = ["Italy", "United States", "United Kingdom", "Germany", "France", "Spain", "Canada", "Australia", "Other"];
 const INTEREST_OPTIONS = ["Gaming", "E-commerce", "B2B", "Healthcare", "Education", "Finance", "Travel", "Food & Beverage", "Technology", "Entertainment"];
@@ -409,6 +410,11 @@ export default function Profile() {
                 </Button>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Credit History Section */}
+          <div className="mt-8">
+            {user && <CreditHistory userId={user.id} />}
           </div>
         </div>
       </div>
