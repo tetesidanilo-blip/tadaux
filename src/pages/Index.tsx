@@ -1,3 +1,4 @@
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Hero } from "@/components/Hero";
 import { Navbar } from "@/components/Navbar";
