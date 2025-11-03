@@ -21,7 +21,9 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  console.log('React version:', React.version);
+  return (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <LanguageProvider>
@@ -48,6 +50,7 @@ const App = () => (
       </LanguageProvider>
     </AuthProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

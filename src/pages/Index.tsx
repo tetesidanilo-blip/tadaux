@@ -2,7 +2,6 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Hero } from "@/components/Hero";
 import { Navbar } from "@/components/Navbar";
-import { LanguageProvider } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
@@ -18,12 +17,10 @@ const Index = () => {
   };
 
   return (
-    <LanguageProvider>
-      <div className="min-h-screen">
-        <Navbar />
-        <Hero onGetStarted={handleGetStarted} />
-      </div>
-    </LanguageProvider>
+    <div className="min-h-screen">
+      <Navbar />
+      <Hero onGetStarted={handleGetStarted} />
+    </div>
   );
 };
 
