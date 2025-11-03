@@ -567,15 +567,24 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
                 {publishAsTemplate && (
                   <div className="pl-6 space-y-2">
                     <Label htmlFor="template-price" className="text-sm">
-                      Prezzo (0-100 crediti, 0 = gratis)
+                      Prezzo (0-500 crediti, 0 = gratis)
+                      {priceError && (
+                        <span className="text-xs text-red-500 ml-2">
+                          {priceError}
+                        </span>
+                      )}
                     </Label>
                     <Input
                       id="template-price"
                       type="number"
                       min="0"
-                      max="100"
+                      max="500"
                       value={templatePrice}
-                      onChange={(e) => setTemplatePrice(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                      onChange={(e) => {
+                        const value = Math.min(500, Math.max(0, parseInt(e.target.value) || 0));
+                        setTemplatePrice(value);
+                        if (priceError) setPriceError(null);
+                      }}
                       className="w-32"
                     />
                     <p className="text-xs text-muted-foreground">
