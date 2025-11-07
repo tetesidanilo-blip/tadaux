@@ -518,6 +518,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      clone_template_atomic: {
+        Args: {
+          _cloner_id: string
+          _custom_title?: string
+          _template_id: string
+        }
+        Returns: Json
+      }
       extract_survey_keywords: {
         Args: { description: string; survey_data: Json; title: string }
         Returns: string[]
