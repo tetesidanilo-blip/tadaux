@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -14,21 +14,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { SaveSurveyDialog } from "./SaveSurveyDialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-interface Question {
-  question: string;
-  type: string;
-  options?: string[];
-  required: boolean;
-  section?: string;
-  feedback?: string;
-  selected?: boolean;
-}
-
-interface Section {
-  name: string;
-  questions: Question[];
-}
+import { useSurveyState, Question } from "@/hooks/useSurveyState";
 
 interface SurveyGeneratorProps {
   onBack: () => void;
@@ -37,40 +23,23 @@ interface SurveyGeneratorProps {
 
 export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps) => {
   const { language: uiLanguage, setLanguage: setUiLanguage, t } = useLanguage();
-  const [description, setDescription] = useState("");
-  const [sectionName, setSectionName] = useState("");
-  const [language, setLanguage] = useState(editingSurvey?.language || "it");
-  const [questionCount, setQuestionCount] = useState<number | null>(null);
-  const [generatingMore, setGeneratingMore] = useState<number | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [sections, setSections] = useState<Section[]>(editingSurvey?.sections || []);
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [currentDraftId, setCurrentDraftId] = useState<string | null>(editingSurvey?.id || null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [state, dispatch] = useSurveyState(editingSurvey);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [editingQuestion, setEditingQuestion] = useState<{ sectionIndex: number; questionIndex: number } | null>(null);
-  const [editedQuestion, setEditedQuestion] = useState<Question | null>(null);
-  const [showingFeedback, setShowingFeedback] = useState<{ sectionIndex: number; questionIndex: number } | null>(null);
-  const [selectedQuestions, setSelectedQuestions] = useState<Array<{sectionIndex: number, questionIndex: number}>>([]);
-  const [applyingFeedback, setApplyingFeedback] = useState(false);
-  const [addingSectionManually, setAddingSectionManually] = useState(false);
-  const [newSectionName, setNewSectionName] = useState("");
-  const [addingSectionDialog, setAddingSectionDialog] = useState(false);
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
-  const [newSectionTitle, setNewSectionTitle] = useState("");
-  const [newSectionDescription, setNewSectionDescription] = useState("");
-  const [newSectionLanguage, setNewSectionLanguage] = useState("it");
-  const [newSectionQuestionCount, setNewSectionQuestionCount] = useState<number | null>(null);
-  const [generatingNewSection, setGeneratingNewSection] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [showMoreQuestionsDialog, setShowMoreQuestionsDialog] = useState(false);
-  const [currentSectionForMore, setCurrentSectionForMore] = useState<number | null>(null);
-  const [newModelDescription, setNewModelDescription] = useState("");
-  const [moreQuestionsCount, setMoreQuestionsCount] = useState<number | null>(null);
-  const [editingSectionName, setEditingSectionName] = useState<number | null>(null);
-  const [editedSectionName, setEditedSectionName] = useState("");
-  const [showSelectQuestionsDialog, setShowSelectQuestionsDialog] = useState(false);
   const { toast } = useToast();
+  
+  // Destructure state for easier access
+  const {
+    description, sectionName, language, questionCount,
+    generatingMore, isGenerating, sections, uploadedFile,
+    currentDraftId, isSaving, editingQuestion, editedQuestion,
+    showingFeedback, selectedQuestions, applyingFeedback,
+    addingSectionManually, newSectionName, addingSectionDialog,
+    showSaveDialog, newSectionTitle, newSectionDescription,
+    newSectionLanguage, newSectionQuestionCount, generatingNewSection,
+    showPreview, showMoreQuestionsDialog, currentSectionForMore,
+    newModelDescription, moreQuestionsCount, editingSectionName,
+    editedSectionName, showSelectQuestionsDialog
+  } = state;
 
   // FIXED: Debounced autosave with proper race condition handling
   useEffect(() => {
@@ -83,7 +52,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
 
     // Debounce: wait 1 second after last change before saving
     saveTimeoutRef.current = setTimeout(async () => {
-      setIsSaving(true);
+      dispatch({ type: 'SET_IS_SAVING', payload: true });
       try {
         const { data: { user } } = await supabase.auth.getUser();
         
@@ -126,12 +95,12 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
             .single();
 
           if (error) throw error;
-          if (data) setCurrentDraftId(data.id);
+          if (data) dispatch({ type: 'SET_CURRENT_DRAFT_ID', payload: data.id });
         }
       } catch (error) {
         console.error("Error autosaving:", error);
       } finally {
-        setIsSaving(false);
+        dispatch({ type: 'SET_IS_SAVING', payload: false });
       }
     }, 1000); // 1 second debounce
 
@@ -140,7 +109,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [sections, language, currentDraftId]);
+  }, [sections, language, currentDraftId, dispatch]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -154,7 +123,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         if (file.type === "text/csv") {
           handleCSVImport(file);
         } else {
-          setUploadedFile(file);
+          dispatch({ type: 'SET_UPLOADED_FILE', payload: file });
           toast({
             title: t("fileUploaded"),
             description: `${file.name} ${t("fileReady")}`,
@@ -245,12 +214,12 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
       }
 
       // Converti la mappa in array di sezioni
-      const importedSections: Section[] = Array.from(sectionMap.entries()).map(([name, questions]) => ({
+      const importedSections: Array<{ name: string; questions: Question[] }> = Array.from(sectionMap.entries()).map(([name, questions]) => ({
         name,
         questions
       }));
 
-      setSections(prev => [...prev, ...importedSections]);
+      dispatch({ type: 'SET_SECTIONS', payload: [...sections, ...importedSections] });
 
       const totalQuestions = importedSections.reduce((sum, s) => sum + s.questions.length, 0);
       toast({
@@ -286,7 +255,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
       return;
     }
 
-    setIsGenerating(true);
+    dispatch({ type: 'SET_IS_GENERATING', payload: true });
     try {
       const { data, error } = await supabase.functions.invoke("generate-survey", {
         body: { 
@@ -304,15 +273,8 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         section: sectionName
       }));
 
-      setSections(prev => [...prev, {
-        name: sectionName,
-        questions: newQuestions
-      }]);
-
-      setDescription("");
-      setSectionName("");
-      setUploadedFile(null);
-      setQuestionCount(null);
+      dispatch({ type: 'ADD_SECTION', payload: { name: sectionName, questions: newQuestions } });
+      dispatch({ type: 'RESET_GENERATION_FORM' });
 
       toast({
         title: t("sectionAdded"),
@@ -326,7 +288,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         variant: "destructive",
       });
     } finally {
-      setIsGenerating(false);
+      dispatch({ type: 'SET_IS_GENERATING', payload: false });
     }
   };
 
@@ -590,7 +552,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
   };
 
   const removeSection = (sectionName: string) => {
-    setSections(prev => prev.filter(s => s.name !== sectionName));
+    dispatch({ type: 'REMOVE_SECTION', payload: sectionName });
     toast({
       title: t("sectionRemoved"),
       description: `"${sectionName}" ${t("hasBeenRemoved")}`,
@@ -598,7 +560,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
   };
 
   const clearAllSections = () => {
-    setSections([]);
+    dispatch({ type: 'CLEAR_SECTIONS' });
     toast({
       title: t("allSectionsCleared"),
       description: t("surveyReset"),
@@ -606,42 +568,28 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
   };
 
   const startEditingQuestion = (sectionIndex: number, questionIndex: number) => {
-    setEditingQuestion({ sectionIndex, questionIndex });
-    setEditedQuestion({ ...sections[sectionIndex].questions[questionIndex] });
+    dispatch({ type: 'START_EDIT_QUESTION', payload: { sectionIndex, questionIndex } });
   };
 
   const cancelEditing = () => {
-    setEditingQuestion(null);
-    setEditedQuestion(null);
+    dispatch({ type: 'CANCEL_EDITING' });
   };
 
   const saveEditedQuestion = () => {
     if (!editingQuestion || !editedQuestion) return;
 
-    setSections(prev => prev.map((section, sIdx) => {
-      if (sIdx === editingQuestion.sectionIndex) {
-        return {
-          ...section,
-          questions: section.questions.map((q, qIdx) => 
-            qIdx === editingQuestion.questionIndex ? editedQuestion : q
-          )
-        };
-      }
-      return section;
-    }));
+    dispatch({ type: 'SAVE_EDITED_QUESTION' });
 
     toast({
       title: t("questionUpdated"),
       description: t("changesSaved"),
     });
-
-    cancelEditing();
   };
 
   const generateMoreQuestions = async (sectionIndex: number) => {
     const section = sections[sectionIndex];
     
-    setGeneratingMore(sectionIndex);
+    dispatch({ type: 'SET_GENERATING_MORE', payload: sectionIndex });
     try {
       const { data, error } = await supabase.functions.invoke("generate-survey", {
         body: { 
@@ -658,11 +606,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         section: section.name
       }));
 
-      setSections(prev => prev.map((s, idx) => 
-        idx === sectionIndex 
-          ? { ...s, questions: [...s.questions, ...newQuestions] }
-          : s
-      ));
+      dispatch({ type: 'ADD_QUESTIONS_TO_SECTION', payload: { sectionIndex, questions: newQuestions } });
 
       toast({
         title: t("questionsAdded"),
@@ -676,14 +620,14 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         variant: "destructive",
       });
     } finally {
-      setGeneratingMore(null);
+      dispatch({ type: 'SET_GENERATING_MORE', payload: null });
     }
   };
 
   const generateMoreQuestionsWithDescription = async (sectionIndex: number, description: string) => {
     const section = sections[sectionIndex];
     
-    setGeneratingMore(sectionIndex);
+    dispatch({ type: 'SET_GENERATING_MORE', payload: sectionIndex });
     try {
       const { data, error } = await supabase.functions.invoke("generate-survey", {
         body: { 
@@ -701,13 +645,8 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         section: section.name
       }));
 
-      setSections(prev => prev.map((s, idx) => 
-        idx === sectionIndex 
-          ? { ...s, questions: [...s.questions, ...newQuestions] }
-          : s
-      ));
-
-      setMoreQuestionsCount(null);
+      dispatch({ type: 'ADD_QUESTIONS_TO_SECTION', payload: { sectionIndex, questions: newQuestions } });
+      dispatch({ type: 'SET_MORE_QUESTIONS_COUNT', payload: null });
 
       toast({
         title: t("questionsAdded"),
@@ -721,46 +660,31 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         variant: "destructive",
       });
     } finally {
-      setGeneratingMore(null);
+      dispatch({ type: 'SET_GENERATING_MORE', payload: null });
     }
   };
 
   const startEditingSectionName = (sectionIndex: number) => {
-    setEditingSectionName(sectionIndex);
-    setEditedSectionName(sections[sectionIndex].name);
+    dispatch({ type: 'START_EDIT_SECTION_NAME', payload: sectionIndex });
   };
 
   const saveSectionName = () => {
     if (editingSectionName === null || !editedSectionName.trim()) return;
 
-    setSections(prev => prev.map((section, idx) => 
-      idx === editingSectionName 
-        ? { ...section, name: editedSectionName.trim() }
-        : section
-    ));
+    dispatch({ type: 'SAVE_SECTION_NAME' });
 
     toast({
       title: "Nome sezione aggiornato",
       description: "Il nome della sezione è stato modificato con successo",
     });
-
-    setEditingSectionName(null);
-    setEditedSectionName("");
   };
 
   const cancelEditingSectionName = () => {
-    setEditingSectionName(null);
-    setEditedSectionName("");
+    dispatch({ type: 'CANCEL_EDIT_SECTION_NAME' });
   };
 
   const deleteQuestion = (sectionIndex: number, questionIndex: number) => {
-    setSections(prev => prev.map((section, sIdx) => {
-      if (sIdx === sectionIndex) {
-        const newQuestions = section.questions.filter((_, qIdx) => qIdx !== questionIndex);
-        return { ...section, questions: newQuestions };
-      }
-      return section;
-    }).filter(section => section.questions.length > 0));
+    dispatch({ type: 'DELETE_QUESTION', payload: { sectionIndex, questionIndex } });
 
     toast({
       title: t("questionDeleted"),
@@ -769,50 +693,23 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
   };
 
   const updateEditedQuestionOptions = (index: number, value: string) => {
-    if (!editedQuestion) return;
-    const newOptions = [...(editedQuestion.options || [])];
-    newOptions[index] = value;
-    setEditedQuestion({ ...editedQuestion, options: newOptions });
+    dispatch({ type: 'UPDATE_EDITED_QUESTION_OPTION', payload: { index, value } });
   };
 
   const addOptionToEditedQuestion = () => {
-    if (!editedQuestion) return;
-    setEditedQuestion({
-      ...editedQuestion,
-      options: [...(editedQuestion.options || []), ""]
-    });
+    dispatch({ type: 'ADD_EDITED_QUESTION_OPTION' });
   };
 
   const removeOptionFromEditedQuestion = (index: number) => {
-    if (!editedQuestion) return;
-    setEditedQuestion({
-      ...editedQuestion,
-      options: editedQuestion.options?.filter((_, i) => i !== index)
-    });
+    dispatch({ type: 'REMOVE_EDITED_QUESTION_OPTION', payload: index });
   };
 
   const toggleFeedback = (sectionIndex: number, questionIndex: number) => {
-    if (showingFeedback?.sectionIndex === sectionIndex && showingFeedback?.questionIndex === questionIndex) {
-      setShowingFeedback(null);
-      setSelectedQuestions([]);
-    } else {
-      setShowingFeedback({ sectionIndex, questionIndex });
-      setSelectedQuestions([]);
-    }
+    dispatch({ type: 'TOGGLE_FEEDBACK', payload: { sectionIndex, questionIndex } });
   };
 
   const saveFeedback = (sectionIndex: number, questionIndex: number, feedback: string) => {
-    setSections(prev => prev.map((section, sIdx) => {
-      if (sIdx === sectionIndex) {
-        return {
-          ...section,
-          questions: section.questions.map((q, qIdx) => 
-            qIdx === questionIndex ? { ...q, feedback } : q
-          )
-        };
-      }
-      return section;
-    }));
+    dispatch({ type: 'SAVE_FEEDBACK', payload: { sectionIndex, questionIndex, feedback } });
 
     toast({
       title: t("feedbackSaved"),
@@ -833,7 +730,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
       return;
     }
 
-    setApplyingFeedback(true);
+    dispatch({ type: 'SET_APPLYING_FEEDBACK', payload: true });
     try {
       const { data, error } = await supabase.functions.invoke("generate-survey", {
         body: { 
@@ -851,19 +748,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
 
       const refinedQuestion = data.questions[0];
 
-      setSections(prev => prev.map((section, sIdx) => {
-        if (sIdx === sectionIndex) {
-          return {
-            ...section,
-            questions: section.questions.map((q, qIdx) => 
-              qIdx === questionIndex 
-                ? { ...refinedQuestion, section: section.name, feedback: q.feedback }
-                : q
-            )
-          };
-        }
-        return section;
-      }));
+      dispatch({ type: 'UPDATE_QUESTION_WITH_FEEDBACK', payload: { sectionIndex, questionIndex, question: refinedQuestion } });
 
       toast({
         title: t("feedbackApplied"),
@@ -877,7 +762,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         variant: "destructive",
       });
     } finally {
-      setApplyingFeedback(false);
+      dispatch({ type: 'SET_APPLYING_FEEDBACK', payload: false });
     }
   };
 
@@ -885,7 +770,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
     questions: Array<{sectionIndex: number, questionIndex: number}>,
     feedback: string
   ) => {
-    setApplyingFeedback(true);
+    dispatch({ type: 'SET_APPLYING_FEEDBACK', payload: true });
     let completed = 0;
 
     try {
@@ -909,19 +794,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
 
           const refinedQuestion = data.questions[0];
 
-          setSections(prev => prev.map((section, sIdx) => {
-            if (sIdx === sectionIndex) {
-              return {
-                ...section,
-                questions: section.questions.map((q, qIdx) => 
-                  qIdx === questionIndex 
-                    ? { ...refinedQuestion, section: section.name, feedback: q.feedback }
-                    : q
-                )
-              };
-            }
-            return section;
-          }));
+          dispatch({ type: 'UPDATE_QUESTION_WITH_FEEDBACK', payload: { sectionIndex, questionIndex, question: refinedQuestion } });
 
           completed++;
         } catch (error) {
@@ -939,7 +812,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         description: `${completed} ${t("questionsUpdated")}`,
       });
 
-      setSelectedQuestions([]);
+      dispatch({ type: 'SET_SELECTED_QUESTIONS', payload: [] });
       if (showingFeedback) {
         toggleFeedback(showingFeedback.sectionIndex, showingFeedback.questionIndex);
       }
@@ -951,7 +824,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         variant: "destructive",
       });
     } finally {
-      setApplyingFeedback(false);
+      dispatch({ type: 'SET_APPLYING_FEEDBACK', payload: false });
     }
   };
 
@@ -965,13 +838,9 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
       return;
     }
 
-    setSections(prev => [...prev, {
-      name: newSectionName,
-      questions: []
-    }]);
-
-    setNewSectionName("");
-    setAddingSectionManually(false);
+    dispatch({ type: 'ADD_SECTION', payload: { name: newSectionName, questions: [] } });
+    dispatch({ type: 'SET_NEW_SECTION_NAME', payload: "" });
+    dispatch({ type: 'SET_ADDING_SECTION_MANUALLY', payload: false });
 
     toast({
       title: t("sectionAdded"),
@@ -998,7 +867,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
       return;
     }
 
-    setGeneratingNewSection(true);
+    dispatch({ type: 'SET_GENERATING_NEW_SECTION', payload: true });
     try {
       const { data, error } = await supabase.functions.invoke("generate-survey", {
         body: { 
@@ -1016,16 +885,8 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         section: newSectionTitle
       }));
 
-      setSections(prev => [...prev, {
-        name: newSectionTitle,
-        questions: newQuestions
-      }]);
-
-      setNewSectionTitle("");
-      setNewSectionDescription("");
-      setNewSectionLanguage("it");
-      setNewSectionQuestionCount(null);
-      setAddingSectionDialog(false);
+      dispatch({ type: 'ADD_SECTION', payload: { name: newSectionTitle, questions: newQuestions } });
+      dispatch({ type: 'RESET_NEW_SECTION_FORM' });
 
       toast({
         title: t("sectionAdded"),
@@ -1039,7 +900,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
         variant: "destructive",
       });
     } finally {
-      setGeneratingNewSection(false);
+      dispatch({ type: 'SET_GENERATING_NEW_SECTION', payload: false });
     }
   };
 
@@ -1085,7 +946,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                 </label>
                 <select
                   value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
+                  onChange={(e) => dispatch({ type: 'SET_LANGUAGE', payload: e.target.value })}
                   className="w-full rounded-md border border-input bg-background px-3 py-2"
                   disabled={isGenerating}
                 >
@@ -1111,7 +972,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                 <Input
                   placeholder={t("sectionNamePlaceholder")}
                   value={sectionName}
-                  onChange={(e) => setSectionName(e.target.value)}
+                  onChange={(e) => dispatch({ type: 'SET_SECTION_NAME', payload: e.target.value })}
                   disabled={isGenerating}
                 />
               </div>
@@ -1123,7 +984,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                 <Textarea
                   placeholder={t("questionDescriptionPlaceholder")}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => dispatch({ type: 'SET_DESCRIPTION', payload: e.target.value })}
                   className="min-h-32"
                   disabled={isGenerating}
                 />
@@ -1155,7 +1016,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setUploadedFile(null)}
+                      onClick={() => dispatch({ type: 'SET_UPLOADED_FILE', payload: null })}
                     >
                       {t("clear")}
                     </Button>
@@ -1177,7 +1038,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                 <Label htmlFor="questionCount">Numero di domande</Label>
                 <Select 
                   value={questionCount === null ? "auto" : questionCount.toString()} 
-                  onValueChange={(value) => setQuestionCount(value === "auto" ? null : parseInt(value))}
+                  onValueChange={(value) => dispatch({ type: 'SET_QUESTION_COUNT', payload: value === "auto" ? null : parseInt(value) })}
                 >
                   <SelectTrigger id="questionCount">
                     <SelectValue placeholder="-- Automatico (AI decide)" />
@@ -1231,7 +1092,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
-                        onClick={() => setShowPreview(true)}
+                        onClick={() => dispatch({ type: 'SET_SHOW_PREVIEW', payload: true })}
                       >
                         <Eye className="w-4 h-4 mr-2" />
                         Preview
@@ -1275,7 +1136,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                           <div className="flex items-center gap-2 flex-1">
                             <Input
                               value={editedSectionName}
-                              onChange={(e) => setEditedSectionName(e.target.value)}
+                              onChange={(e) => dispatch({ type: 'SET_EDITED_SECTION_NAME', payload: e.target.value })}
                               className="text-xl font-bold"
                               autoFocus
                               onKeyDown={(e) => {
@@ -1331,7 +1192,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                   <label className="text-sm font-medium">{t("question")}</label>
                                   <Input
                                     value={editedQuestion.question}
-                                    onChange={(e) => setEditedQuestion({ ...editedQuestion, question: e.target.value })}
+                                    onChange={(e) => dispatch({ type: 'UPDATE_EDITED_QUESTION', payload: { question: e.target.value } })}
                                     className="mt-1"
                                   />
                                 </div>
@@ -1341,7 +1202,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                     <label className="text-sm font-medium">{t("type")}</label>
                                     <select
                                       value={editedQuestion.type}
-                                      onChange={(e) => setEditedQuestion({ ...editedQuestion, type: e.target.value })}
+                                      onChange={(e) => dispatch({ type: 'UPDATE_EDITED_QUESTION', payload: { type: e.target.value } })}
                                       className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2"
                                     >
                                       <option value="multiple_choice">{t("multipleChoice")}</option>
@@ -1356,7 +1217,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                     <input
                                       type="checkbox"
                                       checked={editedQuestion.required}
-                                      onChange={(e) => setEditedQuestion({ ...editedQuestion, required: e.target.checked })}
+                                      onChange={(e) => dispatch({ type: 'UPDATE_EDITED_QUESTION', payload: { required: e.target.checked } })}
                                       className="rounded"
                                     />
                                     <label className="text-sm font-medium">{t("required")}</label>
