@@ -1357,95 +1357,75 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                             <DropdownMenuContent className="bg-background">
                                               <DropdownMenuItem 
                                                 onClick={() => {
-                                                  setSections(prev => prev.map((section, sIdx) => {
-                                                    if (sIdx === sectionIndex) {
-                                                      return {
-                                                        ...section,
-                                                        questions: section.questions.map((q, qIdx) => 
-                                                          qIdx === questionIndex 
-                                                            ? { ...q, type: 'multiple_choice', options: q.options || ['Opzione 1', 'Opzione 2'] }
-                                                            : q
-                                                        )
-                                                      };
-                                                    }
-                                                    return section;
-                                                  }));
+                                                  dispatch({ 
+                                                    type: 'UPDATE_QUESTION_TYPE', 
+                                                    payload: { 
+                                                      sectionIndex, 
+                                                      questionIndex, 
+                                                      type: 'multiple_choice', 
+                                                      options: sections[sectionIndex].questions[questionIndex].options || ['Opzione 1', 'Opzione 2'] 
+                                                    } 
+                                                  });
                                                 }}
                                               >
                                                 <span className="text-xl mr-2">○</span> Scelta multipla
                                               </DropdownMenuItem>
                                               <DropdownMenuItem 
                                                 onClick={() => {
-                                                  setSections(prev => prev.map((section, sIdx) => {
-                                                    if (sIdx === sectionIndex) {
-                                                      return {
-                                                        ...section,
-                                                        questions: section.questions.map((q, qIdx) => 
-                                                          qIdx === questionIndex 
-                                                            ? { ...q, type: 'checkbox', options: q.options || ['Opzione 1', 'Opzione 2'] }
-                                                            : q
-                                                        )
-                                                      };
-                                                    }
-                                                    return section;
-                                                  }));
+                                                  dispatch({ 
+                                                    type: 'UPDATE_QUESTION_TYPE', 
+                                                    payload: { 
+                                                      sectionIndex, 
+                                                      questionIndex, 
+                                                      type: 'checkbox', 
+                                                      options: sections[sectionIndex].questions[questionIndex].options || ['Opzione 1', 'Opzione 2'] 
+                                                    } 
+                                                  });
                                                 }}
                                               >
                                                 <span className="text-xl mr-2">☐</span> Caselle di controllo
                                               </DropdownMenuItem>
                                               <DropdownMenuItem 
                                                 onClick={() => {
-                                                  setSections(prev => prev.map((section, sIdx) => {
-                                                    if (sIdx === sectionIndex) {
-                                                      return {
-                                                        ...section,
-                                                        questions: section.questions.map((q, qIdx) => 
-                                                          qIdx === questionIndex 
-                                                            ? { ...q, type: 'short_answer', options: undefined }
-                                                            : q
-                                                        )
-                                                      };
-                                                    }
-                                                    return section;
-                                                  }));
+                                                  dispatch({ 
+                                                    type: 'UPDATE_QUESTION_TYPE', 
+                                                    payload: { 
+                                                      sectionIndex, 
+                                                      questionIndex, 
+                                                      type: 'short_answer', 
+                                                      options: undefined 
+                                                    } 
+                                                  });
                                                 }}
                                               >
                                                 <span className="text-xl mr-2">___</span> Risposta breve
                                               </DropdownMenuItem>
                                               <DropdownMenuItem 
                                                 onClick={() => {
-                                                  setSections(prev => prev.map((section, sIdx) => {
-                                                    if (sIdx === sectionIndex) {
-                                                      return {
-                                                        ...section,
-                                                        questions: section.questions.map((q, qIdx) => 
-                                                          qIdx === questionIndex 
-                                                            ? { ...q, type: 'paragraph', options: undefined }
-                                                            : q
-                                                        )
-                                                      };
-                                                    }
-                                                    return section;
-                                                  }));
+                                                  dispatch({ 
+                                                    type: 'UPDATE_QUESTION_TYPE', 
+                                                    payload: { 
+                                                      sectionIndex, 
+                                                      questionIndex, 
+                                                      type: 'paragraph', 
+                                                      options: undefined 
+                                                    } 
+                                                  });
                                                 }}
                                               >
                                                 <span className="text-xl mr-2">¶</span> Paragrafo
                                               </DropdownMenuItem>
                                               <DropdownMenuItem 
                                                 onClick={() => {
-                                                  setSections(prev => prev.map((section, sIdx) => {
-                                                    if (sIdx === sectionIndex) {
-                                                      return {
-                                                        ...section,
-                                                        questions: section.questions.map((q, qIdx) => 
-                                                          qIdx === questionIndex 
-                                                            ? { ...q, type: 'dropdown', options: q.options || ['Opzione 1', 'Opzione 2'] }
-                                                            : q
-                                                        )
-                                                      };
-                                                    }
-                                                    return section;
-                                                  }));
+                                                  dispatch({ 
+                                                    type: 'UPDATE_QUESTION_TYPE', 
+                                                    payload: { 
+                                                      sectionIndex, 
+                                                      questionIndex, 
+                                                      type: 'dropdown', 
+                                                      options: sections[sectionIndex].questions[questionIndex].options || ['Opzione 1', 'Opzione 2'] 
+                                                    } 
+                                                  });
                                                 }}
                                               >
                                                 <span className="text-xl mr-2">▼</span> Menu a tendina
@@ -1482,7 +1462,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                         <Button
                                           variant="outline"
                                           size="sm"
-                                          onClick={() => setShowSelectQuestionsDialog(true)}
+                                          onClick={() => dispatch({ type: 'SET_SHOW_SELECT_QUESTIONS_DIALOG', payload: true })}
                                           disabled={!question.feedback}
                                         >
                                           Estendi ad altre domande
@@ -1513,7 +1493,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                       )}
                                     </Button>
 
-                                    <Dialog open={showSelectQuestionsDialog} onOpenChange={setShowSelectQuestionsDialog}>
+                                    <Dialog open={showSelectQuestionsDialog} onOpenChange={(open) => dispatch({ type: 'SET_SHOW_SELECT_QUESTIONS_DIALOG', payload: open })}>
                                       <DialogContent className="max-w-lg">
                                         <DialogHeader>
                                           <DialogTitle>Seleziona domande</DialogTitle>
@@ -1530,14 +1510,11 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                                   checked={selectedQuestions.some(
                                                     sq => sq.sectionIndex === sIdx && sq.questionIndex === qIdx
                                                   )}
-                                                  onCheckedChange={(checked) => {
-                                                    if (checked) {
-                                                      setSelectedQuestions([...selectedQuestions, { sectionIndex: sIdx, questionIndex: qIdx }]);
-                                                    } else {
-                                                      setSelectedQuestions(selectedQuestions.filter(
-                                                        sq => !(sq.sectionIndex === sIdx && sq.questionIndex === qIdx)
-                                                      ));
-                                                    }
+                                                  onCheckedChange={() => {
+                                                    dispatch({ 
+                                                      type: 'TOGGLE_QUESTION_SELECTION', 
+                                                      payload: { sectionIndex: sIdx, questionIndex: qIdx } 
+                                                    });
                                                   }}
                                                 />
                                                 <Label htmlFor={`q-${sIdx}-${qIdx}`} className="text-sm cursor-pointer flex-1">
@@ -1548,7 +1525,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                           )}
                                         </ScrollArea>
                                         <div className="flex justify-end gap-2 pt-2">
-                                          <Button variant="ghost" size="sm" onClick={() => setShowSelectQuestionsDialog(false)}>{t("cancel")}</Button>
+                                          <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'SET_SHOW_SELECT_QUESTIONS_DIALOG', payload: false })}>{t("cancel")}</Button>
                                           <Button 
                                             size="sm" 
                                             onClick={() => {
@@ -1561,8 +1538,8 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                                                 return;
                                               }
                                               applyFeedbackToMultipleQuestions(selectedQuestions, question.feedback || "");
-                                              setShowSelectQuestionsDialog(false);
-                                              setSelectedQuestions([]);
+                                              dispatch({ type: 'SET_SHOW_SELECT_QUESTIONS_DIALOG', payload: false });
+                                              dispatch({ type: 'SET_SELECTED_QUESTIONS', payload: [] });
                                             }}
                                           >
                                             Applica
@@ -1603,8 +1580,8 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setCurrentSectionForMore(sectionIndex);
-                            setShowMoreQuestionsDialog(true);
+                            dispatch({ type: 'SET_CURRENT_SECTION_FOR_MORE', payload: sectionIndex });
+                            dispatch({ type: 'SET_SHOW_MORE_QUESTIONS_DIALOG', payload: true });
                           }}
                           disabled={generatingMore === sectionIndex}
                           className="w-full"
@@ -1622,7 +1599,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={() => setAddingSectionDialog(true)}
+                    onClick={() => dispatch({ type: 'SET_ADDING_SECTION_DIALOG', payload: true })}
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     {t("addNewSection")}
@@ -1673,7 +1650,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
 
 
       {/* Dialog per aggiungere nuova sezione con AI */}
-      <Dialog open={addingSectionDialog} onOpenChange={setAddingSectionDialog}>
+      <Dialog open={addingSectionDialog} onOpenChange={(open) => dispatch({ type: 'SET_ADDING_SECTION_DIALOG', payload: open })}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t("addNewSection")}</DialogTitle>
@@ -1688,7 +1665,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
               </label>
               <select
                 value={newSectionLanguage}
-                onChange={(e) => setNewSectionLanguage(e.target.value)}
+                onChange={(e) => dispatch({ type: 'SET_NEW_SECTION_LANGUAGE', payload: e.target.value })}
                 className="w-full rounded-md border border-input bg-background px-3 py-2"
                 disabled={generatingNewSection}
               >
@@ -1714,7 +1691,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
               <Input
                 placeholder={t("sectionNamePlaceholder")}
                 value={newSectionTitle}
-                onChange={(e) => setNewSectionTitle(e.target.value)}
+                onChange={(e) => dispatch({ type: 'SET_NEW_SECTION_TITLE', payload: e.target.value })}
                 disabled={generatingNewSection}
               />
             </div>
@@ -1726,7 +1703,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
               <Textarea
                 placeholder={t("questionDescriptionPlaceholder")}
                 value={newSectionDescription}
-                onChange={(e) => setNewSectionDescription(e.target.value)}
+                onChange={(e) => dispatch({ type: 'SET_NEW_SECTION_DESCRIPTION', payload: e.target.value })}
                 className="min-h-24"
                 disabled={generatingNewSection}
               />
@@ -1736,7 +1713,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
               <Label htmlFor="newSectionQuestionCount">Numero di domande</Label>
               <Select 
                 value={newSectionQuestionCount === null ? "auto" : newSectionQuestionCount.toString()} 
-                onValueChange={(value) => setNewSectionQuestionCount(value === "auto" ? null : parseInt(value))}
+                onValueChange={(value) => dispatch({ type: 'SET_NEW_SECTION_QUESTION_COUNT', payload: value === "auto" ? null : parseInt(value) })}
               >
                 <SelectTrigger id="newSectionQuestionCount">
                   <SelectValue placeholder="-- Automatico (AI decide)" />
@@ -1756,11 +1733,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
               <Button
                 variant="ghost"
                 onClick={() => {
-                  setAddingSectionDialog(false);
-                  setNewSectionTitle("");
-                  setNewSectionDescription("");
-                  setNewSectionQuestionCount(null);
-                  setNewSectionLanguage("it");
+                  dispatch({ type: 'RESET_NEW_SECTION_FORM' });
                 }}
                 disabled={generatingNewSection}
               >
@@ -1788,7 +1761,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
       </Dialog>
 
       {/* Dialog per nuovo modello */}
-      <Dialog open={showMoreQuestionsDialog} onOpenChange={setShowMoreQuestionsDialog}>
+      <Dialog open={showMoreQuestionsDialog} onOpenChange={(open) => dispatch({ type: 'SET_SHOW_MORE_QUESTIONS_DIALOG', payload: open })}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Nuovo Modello/Argomento</DialogTitle>
@@ -1805,7 +1778,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
               <Textarea
                 placeholder="Es: Crea domande sul modello di leadership trasformazionale, sui principi della fisica quantistica, etc..."
                 value={newModelDescription}
-                onChange={(e) => setNewModelDescription(e.target.value)}
+                onChange={(e) => dispatch({ type: 'SET_NEW_MODEL_DESCRIPTION', payload: e.target.value })}
                 className="min-h-32"
                 autoFocus
               />
@@ -1815,7 +1788,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
               <Label htmlFor="moreQuestionsCount">Numero di domande</Label>
               <Select 
                 value={moreQuestionsCount === null ? "auto" : moreQuestionsCount.toString()} 
-                onValueChange={(value) => setMoreQuestionsCount(value === "auto" ? null : parseInt(value))}
+                onValueChange={(value) => dispatch({ type: 'SET_MORE_QUESTIONS_COUNT', payload: value === "auto" ? null : parseInt(value) })}
               >
                 <SelectTrigger id="moreQuestionsCount">
                   <SelectValue placeholder="-- Automatico (AI decide)" />
@@ -1835,9 +1808,8 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
               <Button
                 variant="outline"
                 onClick={() => {
-                  setShowMoreQuestionsDialog(false);
-                  setNewModelDescription("");
-                  setMoreQuestionsCount(null);
+                  dispatch({ type: 'SET_SHOW_MORE_QUESTIONS_DIALOG', payload: false });
+                  dispatch({ type: 'RESET_MORE_QUESTIONS_FORM' });
                 }}
               >
                 Annulla
@@ -1853,13 +1825,13 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                     return;
                   }
                   
-                  setShowMoreQuestionsDialog(false);
+                  dispatch({ type: 'SET_SHOW_MORE_QUESTIONS_DIALOG', payload: false });
                   
                   if (currentSectionForMore !== null) {
                     await generateMoreQuestionsWithDescription(currentSectionForMore, newModelDescription);
                   }
                   
-                  setNewModelDescription("");
+                  dispatch({ type: 'RESET_MORE_QUESTIONS_FORM' });
                 }}
                 disabled={!newModelDescription.trim()}
               >
@@ -1872,7 +1844,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
       </Dialog>
 
       {/* Preview Dialog */}
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+      <Dialog open={showPreview} onOpenChange={(open) => dispatch({ type: 'SET_SHOW_PREVIEW', payload: open })}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("surveyPreview")}</DialogTitle>
@@ -1919,14 +1891,14 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
           <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
             <Button
               variant="outline"
-              onClick={() => setShowPreview(false)}
+              onClick={() => dispatch({ type: 'SET_SHOW_PREVIEW', payload: false })}
             >
               Chiudi
             </Button>
             <Button
               onClick={() => {
-                setShowPreview(false);
-                setShowSaveDialog(true);
+                dispatch({ type: 'SET_SHOW_PREVIEW', payload: false });
+                dispatch({ type: 'SET_SHOW_SAVE_DIALOG', payload: true });
               }}
             >
               Pubblica
@@ -1938,7 +1910,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
       {/* Save Survey Dialog */}
       <SaveSurveyDialog 
         open={showSaveDialog}
-        onOpenChange={setShowSaveDialog}
+        onOpenChange={(open) => dispatch({ type: 'SET_SHOW_SAVE_DIALOG', payload: open })}
         sections={sections}
         surveyLanguage={language}
         editingSurveyId={editingSurvey?.id}
