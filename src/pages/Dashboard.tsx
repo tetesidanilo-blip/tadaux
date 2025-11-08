@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,9 +39,9 @@ interface Survey {
   responses_public?: boolean;
 }
 
+const SURVEYS_PER_PAGE = 12;
+
 const Dashboard = () => {
-  const [surveys, setSurveys] = useState<Survey[]>([]);
-  const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showGenerator, setShowGenerator] = useState(false);
   const [extendSurveyId, setExtendSurveyId] = useState<string | null>(null);
@@ -62,42 +63,58 @@ const Dashboard = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (user) {
-      loadSurveys();
-    }
-  }, [user]);
-
-  const loadSurveys = async () => {
-    // FIXED: Prevent query when user is undefined
-    if (!user?.id) {
-      setLoading(false);
-      return;
-    }
-
-    try {
+  // Infinite scroll query for surveys
+  const { 
+    data: surveysData, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage,
+    isLoading
+  } = useInfiniteQuery({
+    queryKey: ['surveys', user?.id],
+    queryFn: async ({ pageParam = 0 }) => {
+      if (!user?.id) return [];
+      
+      const from = pageParam * SURVEYS_PER_PAGE;
+      const to = from + SURVEYS_PER_PAGE - 1;
+      
       const { data, error } = await supabase
         .from("surveys")
         .select("*, survey_responses(count)")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
+        .order("created_at", { ascending: false })
+        .range(from, to);
+      
       if (error) throw error;
-
-      // FIXED: Proper typing instead of any
-      const surveysWithCounts = data?.map((survey) => ({
+      
+      return data?.map((survey) => ({
         ...survey,
         response_count: survey.survey_responses?.[0]?.count || 0
       })) || [];
+    },
+    getNextPageParam: (lastPage, pages) => 
+      lastPage.length === SURVEYS_PER_PAGE ? pages.length : undefined,
+    initialPageParam: 0,
+    enabled: !!user?.id
+  });
 
-      setSurveys(surveysWithCounts);
-    } catch (error) {
-      console.error("Error loading surveys:", error);
-      toast.error("Failed to load surveys");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Flatten pages into single array
+  const surveys = surveysData?.pages.flat() || [];
+
+  // Infinite scroll observer
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useCallback((node: HTMLDivElement | null) => {
+    if (isFetchingNextPage) return;
+    if (observerRef.current) observerRef.current.disconnect();
+    
+    observerRef.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasNextPage) {
+        fetchNextPage();
+      }
+    });
+    
+    if (node) observerRef.current.observe(node);
+  }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
 
   const handleExtendExpiry = async () => {
     if (!extendSurveyId) return;
@@ -113,7 +130,8 @@ const Dashboard = () => {
       if (error) throw error;
 
       toast.success(t("expiryExtended"));
-      loadSurveys();
+      // Refresh surveys after extending expiry
+      window.location.reload();
       setExtendSurveyId(null);
     } catch (error) {
       console.error("Error extending expiry:", error);
@@ -133,7 +151,8 @@ const Dashboard = () => {
       if (error) throw error;
 
       toast.success(t("surveyDeleted"));
-      setSurveys(surveys.filter(s => s.id !== deleteId));
+      // Refresh surveys after deletion
+      window.location.reload();
       setDeleteId(null);
     } catch (error) {
       console.error("Error deleting survey:", error);
@@ -175,7 +194,8 @@ const Dashboard = () => {
       if (error) throw error;
 
       toast.success(!currentState ? t("surveyActivated") : t("surveyDeactivated"));
-      loadSurveys();
+      // Refresh surveys after toggle
+      window.location.reload();
     } catch (error) {
       console.error("Error toggling survey:", error);
       toast.error("Failed to update survey");
@@ -318,11 +338,9 @@ const Dashboard = () => {
 
       if (error) throw error;
 
-      setSurveys(surveys.map(s => 
-        s.id === id ? { ...s, title: uniqueTitle } : s
-      ));
-      
       toast.success(t("titleUpdated") || "Titolo aggiornato");
+      // Refresh surveys after title update
+      window.location.reload();
       setEditingTitleId(null);
     } catch (error) {
       console.error("Error updating title:", error);
@@ -335,7 +353,7 @@ const Dashboard = () => {
     setEditingTitleValue("");
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -348,7 +366,7 @@ const Dashboard = () => {
       onBack={() => {
         setShowGenerator(false);
         setEditingSurvey(null);
-        loadSurveys();
+        window.location.reload();
       }} 
       editingSurvey={editingSurvey}
     />;
@@ -674,6 +692,23 @@ const Dashboard = () => {
                 </Card>
               );
             })}
+          </div>
+        )}
+
+        {/* Infinite scroll trigger */}
+        {hasNextPage && (
+          <div ref={loadMoreRef} className="py-8 flex justify-center">
+            {isFetchingNextPage ? (
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            ) : (
+              <Button 
+                variant="outline" 
+                onClick={() => fetchNextPage()}
+                disabled={!hasNextPage}
+              >
+                Carica altri questionari
+              </Button>
+            )}
           </div>
         )}
       </div>
