@@ -63,6 +63,10 @@ export interface SurveyState {
   currentSectionForMore: number | null;
   newModelDescription: string;
   moreQuestionsCount: number | null;
+  
+  // History management
+  history: Section[][];
+  historyIndex: number;
 }
 
 export type SurveyAction =
@@ -139,80 +143,117 @@ export type SurveyAction =
   
   // Combined actions
   | { type: 'ADD_QUESTIONS_TO_SECTION'; payload: { sectionIndex: number; questions: Question[] } }
-  | { type: 'RESET_GENERATION_FORM' };
+  | { type: 'RESET_GENERATION_FORM' }
+  
+  // History actions
+  | { type: 'UNDO' }
+  | { type: 'REDO' };
+
+// Actions that should save to history
+const HISTORY_ACTIONS = [
+  'SET_SECTIONS', 'ADD_SECTION', 'UPDATE_SECTION', 'REMOVE_SECTION', 'CLEAR_SECTIONS',
+  'SAVE_EDITED_QUESTION', 'DELETE_QUESTION', 'UPDATE_QUESTION_TYPE',
+  'SAVE_SECTION_NAME', 'SAVE_FEEDBACK', 'UPDATE_QUESTION_WITH_FEEDBACK',
+  'ADD_QUESTIONS_TO_SECTION'
+];
+
+function saveToHistory(state: SurveyState): SurveyState {
+  // Don't save if sections are empty
+  if (state.sections.length === 0) return state;
+  
+  // If we're not at the end of history, truncate future history
+  const newHistory = state.history.slice(0, state.historyIndex + 1);
+  
+  // Add current state to history (deep copy sections)
+  const sectionsSnapshot = JSON.parse(JSON.stringify(state.sections));
+  newHistory.push(sectionsSnapshot);
+  
+  // Keep only last 50 history states to prevent memory issues
+  const trimmedHistory = newHistory.slice(-50);
+  
+  return {
+    ...state,
+    history: trimmedHistory,
+    historyIndex: trimmedHistory.length - 1
+  };
+}
 
 export function surveyReducer(state: SurveyState, action: SurveyAction): SurveyState {
+  // Save to history before applying certain actions
+  const shouldSaveHistory = HISTORY_ACTIONS.includes(action.type);
+  const stateWithHistory = shouldSaveHistory ? saveToHistory(state) : state;
+  
   switch (action.type) {
     // Form updates
     case 'SET_DESCRIPTION':
-      return { ...state, description: action.payload };
+      return { ...stateWithHistory, description: action.payload };
     case 'SET_SECTION_NAME':
-      return { ...state, sectionName: action.payload };
+      return { ...stateWithHistory, sectionName: action.payload };
     case 'SET_LANGUAGE':
-      return { ...state, language: action.payload };
+      return { ...stateWithHistory, language: action.payload };
     case 'SET_QUESTION_COUNT':
-      return { ...state, questionCount: action.payload };
+      return { ...stateWithHistory, questionCount: action.payload };
     
     // Generation states
     case 'SET_GENERATING_MORE':
-      return { ...state, generatingMore: action.payload };
+      return { ...stateWithHistory, generatingMore: action.payload };
     case 'SET_IS_GENERATING':
-      return { ...state, isGenerating: action.payload };
+      return { ...stateWithHistory, isGenerating: action.payload };
     case 'SET_GENERATING_NEW_SECTION':
-      return { ...state, generatingNewSection: action.payload };
+      return { ...stateWithHistory, generatingNewSection: action.payload };
     case 'SET_APPLYING_FEEDBACK':
-      return { ...state, applyingFeedback: action.payload };
+      return { ...stateWithHistory, applyingFeedback: action.payload };
     
     // Data updates
     case 'SET_SECTIONS':
-      return { ...state, sections: action.payload };
+      return { ...stateWithHistory, sections: action.payload };
     case 'ADD_SECTION':
-      return { ...state, sections: [...state.sections, action.payload] };
+      return { ...stateWithHistory, sections: [...stateWithHistory.sections, action.payload] };
     case 'UPDATE_SECTION':
       return {
-        ...state,
-        sections: state.sections.map((section, idx) =>
+        ...stateWithHistory,
+        sections: stateWithHistory.sections.map((section, idx) =>
           idx === action.payload.index ? action.payload.section : section
         )
       };
     case 'REMOVE_SECTION':
       return {
-        ...state,
-        sections: state.sections.filter(s => s.name !== action.payload)
+        ...stateWithHistory,
+        sections: stateWithHistory.sections.filter(s => s.name !== action.payload)
       };
     case 'CLEAR_SECTIONS':
-      return { ...state, sections: [] };
+      return { ...stateWithHistory, sections: [] };
     case 'SET_UPLOADED_FILE':
-      return { ...state, uploadedFile: action.payload };
+      return { ...stateWithHistory, uploadedFile: action.payload };
     case 'SET_CURRENT_DRAFT_ID':
-      return { ...state, currentDraftId: action.payload };
+      return { ...stateWithHistory, currentDraftId: action.payload };
     case 'SET_IS_SAVING':
-      return { ...state, isSaving: action.payload };
+      return { ...stateWithHistory, isSaving: action.payload };
     
     // Question editing
     case 'START_EDIT_QUESTION':
       return {
-        ...state,
+        ...stateWithHistory,
         editingQuestion: action.payload,
-        editedQuestion: { ...state.sections[action.payload.sectionIndex].questions[action.payload.questionIndex] }
+        editedQuestion: { ...stateWithHistory.sections[action.payload.sectionIndex].questions[action.payload.questionIndex] }
       };
     case 'SET_EDITED_QUESTION':
-      return { ...state, editedQuestion: action.payload };
+      return { ...stateWithHistory, editedQuestion: action.payload };
     case 'UPDATE_EDITED_QUESTION':
       return {
-        ...state,
-        editedQuestion: state.editedQuestion ? { ...state.editedQuestion, ...action.payload } : null
+        ...stateWithHistory,
+        editedQuestion: stateWithHistory.editedQuestion ? { ...stateWithHistory.editedQuestion, ...action.payload } : null
       };
     case 'SAVE_EDITED_QUESTION':
-      if (!state.editingQuestion || !state.editedQuestion) return state;
+      if (!stateWithHistory.editingQuestion || !stateWithHistory.editedQuestion) return stateWithHistory;
       return {
-        ...state,
-        sections: state.sections.map((section, sIdx) => {
-          if (sIdx === state.editingQuestion!.sectionIndex) {
+        ...stateWithHistory,
+        sections: stateWithHistory.sections.map((section, sIdx) => {
+          if (sIdx === stateWithHistory.editingQuestion!.sectionIndex) {
             return {
               ...section,
               questions: section.questions.map((q, qIdx) =>
-                qIdx === state.editingQuestion!.questionIndex ? state.editedQuestion! : q
+                qIdx === stateWithHistory.editingQuestion!.questionIndex ? stateWithHistory.editedQuestion! : q
               )
             };
           }
@@ -223,14 +264,14 @@ export function surveyReducer(state: SurveyState, action: SurveyAction): SurveyS
       };
     case 'CANCEL_EDITING':
       return {
-        ...state,
+        ...stateWithHistory,
         editingQuestion: null,
         editedQuestion: null
       };
     case 'DELETE_QUESTION':
       return {
-        ...state,
-        sections: state.sections.map((section, sIdx) => {
+        ...stateWithHistory,
+        sections: stateWithHistory.sections.map((section, sIdx) => {
           if (sIdx === action.payload.sectionIndex) {
             return {
               ...section,
@@ -242,8 +283,8 @@ export function surveyReducer(state: SurveyState, action: SurveyAction): SurveyS
       };
     case 'UPDATE_QUESTION_TYPE':
       return {
-        ...state,
-        sections: state.sections.map((section, sIdx) => {
+        ...stateWithHistory,
+        sections: stateWithHistory.sections.map((section, sIdx) => {
           if (sIdx === action.payload.sectionIndex) {
             return {
               ...section,
@@ -260,51 +301,51 @@ export function surveyReducer(state: SurveyState, action: SurveyAction): SurveyS
     
     // Question options editing
     case 'UPDATE_EDITED_QUESTION_OPTION':
-      if (!state.editedQuestion) return state;
+      if (!stateWithHistory.editedQuestion) return stateWithHistory;
       return {
-        ...state,
+        ...stateWithHistory,
         editedQuestion: {
-          ...state.editedQuestion,
-          options: state.editedQuestion.options?.map((opt, idx) =>
+          ...stateWithHistory.editedQuestion,
+          options: stateWithHistory.editedQuestion.options?.map((opt, idx) =>
             idx === action.payload.index ? action.payload.value : opt
           )
         }
       };
     case 'ADD_EDITED_QUESTION_OPTION':
-      if (!state.editedQuestion) return state;
+      if (!stateWithHistory.editedQuestion) return stateWithHistory;
       return {
-        ...state,
+        ...stateWithHistory,
         editedQuestion: {
-          ...state.editedQuestion,
-          options: [...(state.editedQuestion.options || []), ""]
+          ...stateWithHistory.editedQuestion,
+          options: [...(stateWithHistory.editedQuestion.options || []), ""]
         }
       };
     case 'REMOVE_EDITED_QUESTION_OPTION':
-      if (!state.editedQuestion) return state;
+      if (!stateWithHistory.editedQuestion) return stateWithHistory;
       return {
-        ...state,
+        ...stateWithHistory,
         editedQuestion: {
-          ...state.editedQuestion,
-          options: state.editedQuestion.options?.filter((_, idx) => idx !== action.payload)
+          ...stateWithHistory.editedQuestion,
+          options: stateWithHistory.editedQuestion.options?.filter((_, idx) => idx !== action.payload)
         }
       };
     
     // Section name editing
     case 'START_EDIT_SECTION_NAME':
       return {
-        ...state,
+        ...stateWithHistory,
         editingSectionName: action.payload,
-        editedSectionName: state.sections[action.payload].name
+        editedSectionName: stateWithHistory.sections[action.payload].name
       };
     case 'SET_EDITED_SECTION_NAME':
-      return { ...state, editedSectionName: action.payload };
+      return { ...stateWithHistory, editedSectionName: action.payload };
     case 'SAVE_SECTION_NAME':
-      if (state.editingSectionName === null || !state.editedSectionName.trim()) return state;
+      if (stateWithHistory.editingSectionName === null || !stateWithHistory.editedSectionName.trim()) return stateWithHistory;
       return {
-        ...state,
-        sections: state.sections.map((section, idx) =>
-          idx === state.editingSectionName
-            ? { ...section, name: state.editedSectionName.trim() }
+        ...stateWithHistory,
+        sections: stateWithHistory.sections.map((section, idx) =>
+          idx === stateWithHistory.editingSectionName
+            ? { ...section, name: stateWithHistory.editedSectionName.trim() }
             : section
         ),
         editingSectionName: null,
@@ -312,30 +353,30 @@ export function surveyReducer(state: SurveyState, action: SurveyAction): SurveyS
       };
     case 'CANCEL_EDIT_SECTION_NAME':
       return {
-        ...state,
+        ...stateWithHistory,
         editingSectionName: null,
         editedSectionName: ""
       };
     
     // Feedback
     case 'TOGGLE_FEEDBACK':
-      if (state.showingFeedback?.sectionIndex === action.payload.sectionIndex &&
-          state.showingFeedback?.questionIndex === action.payload.questionIndex) {
+      if (stateWithHistory.showingFeedback?.sectionIndex === action.payload.sectionIndex &&
+          stateWithHistory.showingFeedback?.questionIndex === action.payload.questionIndex) {
         return {
-          ...state,
+          ...stateWithHistory,
           showingFeedback: null,
           selectedQuestions: []
         };
       }
       return {
-        ...state,
+        ...stateWithHistory,
         showingFeedback: action.payload,
         selectedQuestions: []
       };
     case 'SAVE_FEEDBACK':
       return {
-        ...state,
-        sections: state.sections.map((section, sIdx) => {
+        ...stateWithHistory,
+        sections: stateWithHistory.sections.map((section, sIdx) => {
           if (sIdx === action.payload.sectionIndex) {
             return {
               ...section,
@@ -348,23 +389,23 @@ export function surveyReducer(state: SurveyState, action: SurveyAction): SurveyS
         })
       };
     case 'SET_SELECTED_QUESTIONS':
-      return { ...state, selectedQuestions: action.payload };
+      return { ...stateWithHistory, selectedQuestions: action.payload };
     case 'TOGGLE_QUESTION_SELECTION':
-      const exists = state.selectedQuestions.some(
+      const exists = stateWithHistory.selectedQuestions.some(
         sq => sq.sectionIndex === action.payload.sectionIndex && sq.questionIndex === action.payload.questionIndex
       );
       return {
-        ...state,
+        ...stateWithHistory,
         selectedQuestions: exists
-          ? state.selectedQuestions.filter(
+          ? stateWithHistory.selectedQuestions.filter(
               sq => !(sq.sectionIndex === action.payload.sectionIndex && sq.questionIndex === action.payload.questionIndex)
             )
-          : [...state.selectedQuestions, action.payload]
+          : [...stateWithHistory.selectedQuestions, action.payload]
       };
     case 'UPDATE_QUESTION_WITH_FEEDBACK':
       return {
-        ...state,
-        sections: state.sections.map((section, sIdx) => {
+        ...stateWithHistory,
+        sections: stateWithHistory.sections.map((section, sIdx) => {
           if (sIdx === action.payload.sectionIndex) {
             return {
               ...section,
@@ -381,32 +422,32 @@ export function surveyReducer(state: SurveyState, action: SurveyAction): SurveyS
     
     // Dialogs
     case 'SET_ADDING_SECTION_MANUALLY':
-      return { ...state, addingSectionManually: action.payload };
+      return { ...stateWithHistory, addingSectionManually: action.payload };
     case 'SET_ADDING_SECTION_DIALOG':
-      return { ...state, addingSectionDialog: action.payload };
+      return { ...stateWithHistory, addingSectionDialog: action.payload };
     case 'SET_SHOW_SAVE_DIALOG':
-      return { ...state, showSaveDialog: action.payload };
+      return { ...stateWithHistory, showSaveDialog: action.payload };
     case 'SET_SHOW_PREVIEW':
-      return { ...state, showPreview: action.payload };
+      return { ...stateWithHistory, showPreview: action.payload };
     case 'SET_SHOW_MORE_QUESTIONS_DIALOG':
-      return { ...state, showMoreQuestionsDialog: action.payload };
+      return { ...stateWithHistory, showMoreQuestionsDialog: action.payload };
     case 'SET_SHOW_SELECT_QUESTIONS_DIALOG':
-      return { ...state, showSelectQuestionsDialog: action.payload };
+      return { ...stateWithHistory, showSelectQuestionsDialog: action.payload };
     
     // New section form
     case 'SET_NEW_SECTION_NAME':
-      return { ...state, newSectionName: action.payload };
+      return { ...stateWithHistory, newSectionName: action.payload };
     case 'SET_NEW_SECTION_TITLE':
-      return { ...state, newSectionTitle: action.payload };
+      return { ...stateWithHistory, newSectionTitle: action.payload };
     case 'SET_NEW_SECTION_DESCRIPTION':
-      return { ...state, newSectionDescription: action.payload };
+      return { ...stateWithHistory, newSectionDescription: action.payload };
     case 'SET_NEW_SECTION_LANGUAGE':
-      return { ...state, newSectionLanguage: action.payload };
+      return { ...stateWithHistory, newSectionLanguage: action.payload };
     case 'SET_NEW_SECTION_QUESTION_COUNT':
-      return { ...state, newSectionQuestionCount: action.payload };
+      return { ...stateWithHistory, newSectionQuestionCount: action.payload };
     case 'RESET_NEW_SECTION_FORM':
       return {
-        ...state,
+        ...stateWithHistory,
         newSectionTitle: "",
         newSectionDescription: "",
         newSectionLanguage: "it",
@@ -416,14 +457,14 @@ export function surveyReducer(state: SurveyState, action: SurveyAction): SurveyS
     
     // More questions form
     case 'SET_CURRENT_SECTION_FOR_MORE':
-      return { ...state, currentSectionForMore: action.payload };
+      return { ...stateWithHistory, currentSectionForMore: action.payload };
     case 'SET_NEW_MODEL_DESCRIPTION':
-      return { ...state, newModelDescription: action.payload };
+      return { ...stateWithHistory, newModelDescription: action.payload };
     case 'SET_MORE_QUESTIONS_COUNT':
-      return { ...state, moreQuestionsCount: action.payload };
+      return { ...stateWithHistory, moreQuestionsCount: action.payload };
     case 'RESET_MORE_QUESTIONS_FORM':
       return {
-        ...state,
+        ...stateWithHistory,
         newModelDescription: "",
         moreQuestionsCount: null
       };
@@ -431,8 +472,8 @@ export function surveyReducer(state: SurveyState, action: SurveyAction): SurveyS
     // Combined actions
     case 'ADD_QUESTIONS_TO_SECTION':
       return {
-        ...state,
-        sections: state.sections.map((s, idx) =>
+        ...stateWithHistory,
+        sections: stateWithHistory.sections.map((s, idx) =>
           idx === action.payload.sectionIndex
             ? { ...s, questions: [...s.questions, ...action.payload.questions] }
             : s
@@ -440,19 +481,43 @@ export function surveyReducer(state: SurveyState, action: SurveyAction): SurveyS
       };
     case 'RESET_GENERATION_FORM':
       return {
-        ...state,
+        ...stateWithHistory,
         description: "",
         sectionName: "",
         uploadedFile: null,
         questionCount: null
       };
     
+    // History actions
+    case 'UNDO':
+      if (stateWithHistory.historyIndex > 0) {
+        const newIndex = stateWithHistory.historyIndex - 1;
+        return {
+          ...stateWithHistory,
+          sections: JSON.parse(JSON.stringify(stateWithHistory.history[newIndex])),
+          historyIndex: newIndex
+        };
+      }
+      return stateWithHistory;
+    
+    case 'REDO':
+      if (stateWithHistory.historyIndex < stateWithHistory.history.length - 1) {
+        const newIndex = stateWithHistory.historyIndex + 1;
+        return {
+          ...stateWithHistory,
+          sections: JSON.parse(JSON.stringify(stateWithHistory.history[newIndex])),
+          historyIndex: newIndex
+        };
+      }
+      return stateWithHistory;
+    
     default:
-      return state;
+      return stateWithHistory;
   }
 }
 
 export function useSurveyState(editingSurvey?: any) {
+  const initialSections = editingSurvey?.sections || [];
   const initialState: SurveyState = {
     // Form inputs
     description: "",
@@ -467,7 +532,7 @@ export function useSurveyState(editingSurvey?: any) {
     applyingFeedback: false,
     
     // Data
-    sections: editingSurvey?.sections || [],
+    sections: initialSections,
     uploadedFile: null,
     currentDraftId: editingSurvey?.id || null,
     isSaving: false,
@@ -501,6 +566,10 @@ export function useSurveyState(editingSurvey?: any) {
     currentSectionForMore: null,
     newModelDescription: "",
     moreQuestionsCount: null,
+    
+    // History management
+    history: initialSections.length > 0 ? [JSON.parse(JSON.stringify(initialSections))] : [],
+    historyIndex: initialSections.length > 0 ? 0 : -1,
   };
 
   return useReducer(surveyReducer, initialState);

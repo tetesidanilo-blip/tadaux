@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, FileText, Edit2, Trash2, Check, X, Languages, MessageSquare, Plus, CheckCircle2, Circle, Download, Eye, Save } from "lucide-react";
+import { Loader2, Upload, FileText, Edit2, Trash2, Check, X, Languages, MessageSquare, Plus, CheckCircle2, Circle, Download, Eye, Save, Undo2, Redo2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -38,7 +38,7 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
     newSectionLanguage, newSectionQuestionCount, generatingNewSection,
     showPreview, showMoreQuestionsDialog, currentSectionForMore,
     newModelDescription, moreQuestionsCount, editingSectionName,
-    editedSectionName, showSelectQuestionsDialog
+    editedSectionName, showSelectQuestionsDialog, history, historyIndex
   } = state;
 
   // FIXED: Debounced autosave with proper race condition handling
@@ -110,6 +110,26 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
       }
     };
   }, [sections, language, currentDraftId, dispatch]);
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (historyIndex > 0) {
+          dispatch({ type: 'UNDO' });
+        }
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        if (historyIndex < history.length - 1) {
+          dispatch({ type: 'REDO' });
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [historyIndex, history.length, dispatch]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1090,6 +1110,24 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
                       )}
                     </div>
                     <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => dispatch({ type: 'UNDO' })}
+                        disabled={historyIndex <= 0}
+                        title="Annulla (Ctrl+Z)"
+                      >
+                        <Undo2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => dispatch({ type: 'REDO' })}
+                        disabled={historyIndex >= history.length - 1}
+                        title="Ripeti (Ctrl+Y)"
+                      >
+                        <Redo2 className="w-4 h-4" />
+                      </Button>
                       <Button
                         variant="outline"
                         onClick={() => dispatch({ type: 'SET_SHOW_PREVIEW', payload: true })}
