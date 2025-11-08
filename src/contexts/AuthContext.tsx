@@ -42,38 +42,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        // CRITICAL: Only synchronous state updates here
         setSession(session);
         setUser(session?.user ?? null);
+        setLoading(false);
         
+        // Defer Supabase calls with setTimeout to prevent deadlock
         if (session?.user) {
-          // Load complete profile once upon login
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", session.user.id)
-            .single();
-          setProfile(profileData as ProfileData);
+          setTimeout(() => {
+            supabase
+              .from("profiles")
+              .select("*")
+              .eq("id", session.user.id)
+              .single()
+              .then(({ data }) => {
+                if (data) setProfile(data as ProfileData);
+              });
+          }, 0);
         } else {
           setProfile(null);
         }
-        
-        setLoading(false);
       }
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        const { data: profileData } = await supabase
+        // Load profile immediately on mount
+        supabase
           .from("profiles")
           .select("*")
           .eq("id", session.user.id)
-          .single();
-        setProfile(profileData as ProfileData);
+          .single()
+          .then(({ data }) => {
+            if (data) setProfile(data as ProfileData);
+          });
       }
       
       setLoading(false);
