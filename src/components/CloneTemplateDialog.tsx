@@ -8,6 +8,7 @@ import { Coins, AlertCircle, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CloneTemplateDialogProps {
   open: boolean;
@@ -28,6 +29,7 @@ interface CloneTemplateDialogProps {
 export const CloneTemplateDialog = ({ open, onOpenChange, template, userCredits, onSuccess }: CloneTemplateDialogProps) => {
   const [customTitle, setCustomTitle] = useState("");
   const [cloning, setCloning] = useState(false);
+  const { refreshProfile } = useAuth();
   const navigate = useNavigate();
 
   const handleClone = async () => {
@@ -63,6 +65,7 @@ export const CloneTemplateDialog = ({ open, onOpenChange, template, userCredits,
         }
       });
 
+      await refreshProfile(); // Update credits in context
       onOpenChange(false);
       setCustomTitle("");
       onSuccess?.();

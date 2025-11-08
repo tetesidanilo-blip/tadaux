@@ -14,25 +14,12 @@ import { Coins, FileText, TrendingUp, Edit, Trash2, Eye, EyeOff } from "lucide-r
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function MyTemplates() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const queryClient = useQueryClient();
   const [editingTemplate, setEditingTemplate] = useState<any>(null);
   const [newPrice, setNewPrice] = useState<number>(0);
 
-  const { data: profile } = useQuery({
-    queryKey: ['profile', user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('subscription_tier')
-        .eq('id', user?.id)
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user?.id,
-  });
+  const userTier = profile?.subscription_tier || 'free';
 
   const { data: templates, isLoading } = useQuery({
     queryKey: ['my-templates', user?.id],
@@ -53,7 +40,7 @@ export default function MyTemplates() {
       if (error) throw error;
       return data;
     },
-    enabled: !!user?.id && profile?.subscription_tier === 'pro',
+    enabled: !!user?.id && userTier === 'pro',
   });
 
   const updatePriceMutation = useMutation({
@@ -96,7 +83,7 @@ export default function MyTemplates() {
     },
   });
 
-  if (profile?.subscription_tier !== 'pro') {
+  if (userTier !== 'pro') {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />

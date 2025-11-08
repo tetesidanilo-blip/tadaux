@@ -32,28 +32,10 @@ export const CreateResearchRequestDialog = ({
   const [deadline, setDeadline] = useState("");
   const [matchingEnabled, setMatchingEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [userTier, setUserTier] = useState<string>("free");
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (user && open) {
-      fetchUserTier();
-    }
-  }, [user, open]);
-
-  const fetchUserTier = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("profiles")
-      .select("subscription_tier")
-      .eq("id", user.id)
-      .single();
-    
-    if (data) {
-      setUserTier(data.subscription_tier || "free");
-    }
-  };
+  const userTier = profile?.subscription_tier || 'free';
 
   const addTopic = () => {
     if (currentTopic.trim() && !topics.includes(currentTopic.trim())) {

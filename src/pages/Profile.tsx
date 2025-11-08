@@ -31,12 +31,11 @@ interface ProfileData {
 }
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, profile: contextProfile, refreshProfile } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [userCredits, setUserCredits] = useState(0);
   const [profile, setProfile] = useState<ProfileData>({
     full_name: "",
     subscription_tier: "free",
@@ -52,10 +51,25 @@ export default function Profile() {
 
   useEffect(() => {
     if (user) {
-      loadProfile();
       loadCreditTransactions();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (contextProfile) {
+      const tier = contextProfile.subscription_tier as 'free' | 'pro' | 'business' || 'free';
+      setProfile({
+        full_name: contextProfile.full_name || "",
+        subscription_tier: tier,
+        subscription_expires_at: contextProfile.subscription_expires_at,
+        interests: contextProfile.interests || [],
+        age_range: contextProfile.age_range,
+        country: contextProfile.country,
+        available_for_research: contextProfile.available_for_research || false,
+        profile_completed: contextProfile.profile_completed || false,
+      });
+    }
+  }, [contextProfile]);
 
   const loadCreditTransactions = async () => {
     if (!user) return;
@@ -67,40 +81,6 @@ export default function Profile() {
       .limit(10);
     
     if (data) setTransactions(data);
-  };
-
-  const loadProfile = async () => {
-    if (!user) return;
-    
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-
-    if (error) {
-      toast({
-        title: "Error loading profile",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (data) {
-      const tier = data.subscription_tier as 'free' | 'pro' | 'business' || 'free';
-      setProfile({
-        full_name: data.full_name || "",
-        subscription_tier: tier,
-        subscription_expires_at: data.subscription_expires_at,
-        interests: data.interests || [],
-        age_range: data.age_range,
-        country: data.country,
-        available_for_research: data.available_for_research || false,
-        profile_completed: data.profile_completed || false,
-      });
-      setUserCredits(data.credits || 0);
-    }
   };
 
   const calculateCompletionPercentage = () => {
@@ -150,7 +130,7 @@ export default function Profile() {
         title: "Profile updated",
         description: "Your profile has been saved successfully.",
       });
-      loadProfile();
+      await refreshProfile();
     }
   };
 
@@ -201,7 +181,7 @@ export default function Profile() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="text-center">
-                  <CreditsDisplay credits={userCredits} className="text-3xl" showTooltip={false} />
+                  <CreditsDisplay credits={contextProfile?.credits || 0} className="text-3xl" showTooltip={false} />
                 </div>
                 
                 <div className="space-y-2 pt-4 border-t">

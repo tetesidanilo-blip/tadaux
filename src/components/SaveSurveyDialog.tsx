@@ -49,7 +49,6 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
   const [expiresAt, setExpiresAt] = useState<Date | undefined>();
   const [expiredMessage, setExpiredMessage] = useState("");
   const [saving, setSaving] = useState(false);
-  const [userTier, setUserTier] = useState<string>('free');
   const [visibleInCommunity, setVisibleInCommunity] = useState(false);
   const [responsesPublic, setResponsesPublic] = useState(false);
   const [legalConsent, setLegalConsent] = useState(false);
@@ -58,9 +57,11 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
   const [templatePrice, setTemplatePrice] = useState(0);
   const [priceError, setPriceError] = useState<string | null>(null);
 
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+
+  const userTier = profile?.subscription_tier || 'free';
 
   // Auto-populate title with first section name when dialog opens
   useEffect(() => {
@@ -69,27 +70,12 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
     }
   }, [open, sections]);
 
-  // Fetch user tier when dialog opens
+  // Auto-set visibility for FREE tier when dialog opens
   useEffect(() => {
-    const fetchUserTier = async () => {
-      if (user && open) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('subscription_tier')
-          .eq('id', user.id)
-          .single();
-        
-        const tier = data?.subscription_tier || 'free';
-        setUserTier(tier);
-        
-        // Auto-set for FREE tier
-        if (tier === 'free') {
-          setVisibleInCommunity(true);
-        }
-      }
-    };
-    fetchUserTier();
-  }, [user, open]);
+    if (open && userTier === 'free') {
+      setVisibleInCommunity(true);
+    }
+  }, [open, userTier]);
 
   const handleQuickExpiration = (days: number | null) => {
     if (days === null) {

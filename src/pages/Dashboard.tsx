@@ -50,8 +50,6 @@ const Dashboard = () => {
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [editingTitleValue, setEditingTitleValue] = useState("");
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [userCredits, setUserCredits] = useState(0);
   const [findParticipantsSurveyId, setFindParticipantsSurveyId] = useState<string | null>(null);
   const [createRequestDialogOpen, setCreateRequestDialogOpen] = useState(false);
   const [activateSurveyId, setActivateSurveyId] = useState<string | null>(null);
@@ -60,29 +58,15 @@ const Dashboard = () => {
   const [expiryTime, setExpiryTime] = useState<string>("23:59");
   const [calendarOpen, setCalendarOpen] = useState(false);
   
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
       loadSurveys();
-      loadUserProfile();
     }
-  }, [user]); // loadSurveys and loadUserProfile are stable functions
-
-  const loadUserProfile = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-    if (data) {
-      setUserProfile(data);
-      setUserCredits(data.credits || 0);
-    }
-  };
+  }, [user]);
 
   const loadSurveys = async () => {
     // FIXED: Prevent query when user is undefined
@@ -374,10 +358,11 @@ const Dashboard = () => {
   const activeSurveys = surveys.filter(s => s.is_active && !isSurveyExpired(s.expires_at)).length;
   const expiredSurveys = surveys.filter(s => isSurveyExpired(s.expires_at)).length;
 
-  const isFreeUser = userProfile?.subscription_tier === 'free';
-  const surveysCreated = userProfile?.surveys_created_count || 0;
-  const responsesCollected = userProfile?.total_responses_collected || 0;
+  const isFreeUser = profile?.subscription_tier === 'free';
+  const surveysCreated = profile?.surveys_created_count || 0;
+  const responsesCollected = profile?.total_responses_collected || 0;
   const canCreateSurvey = !isFreeUser || surveysCreated < 10;
+  const userCredits = profile?.credits || 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -696,7 +681,7 @@ const Dashboard = () => {
       <UpgradePlanDialog
         open={upgradeDialogOpen}
         onOpenChange={setUpgradeDialogOpen}
-        currentTier={userProfile?.subscription_tier || 'free'}
+        currentTier={profile?.subscription_tier || 'free'}
       />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

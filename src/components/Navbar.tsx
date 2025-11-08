@@ -18,43 +18,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
 
 export const Navbar = () => {
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
-  const [userTier, setUserTier] = useState<'free' | 'pro' | 'business'>('free');
-  const [userCredits, setUserCredits] = useState(0);
 
-  useEffect(() => {
-    if (user) {
-      loadUserTier();
-      loadUserCredits();
-    }
-  }, [user]);
-
-  const loadUserTier = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("profiles")
-      .select("subscription_tier, credits")
-      .eq("id", user.id)
-      .single();
-    if (data) {
-      setUserTier(data.subscription_tier as 'free' | 'pro' | 'business' || 'free');
-      setUserCredits(data.credits || 0);
-    }
-  };
-
-  const loadUserCredits = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("profiles")
-      .select("credits")
-      .eq("id", user.id)
-      .single();
-    if (data) setUserCredits(data.credits || 0);
-  };
+  const userTier = profile?.subscription_tier || 'free';
+  const userCredits = profile?.credits || 0;
 
   const handleLogout = async () => {
     await signOut();

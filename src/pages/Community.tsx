@@ -84,12 +84,13 @@ export default function Community() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
-  const [userCredits, setUserCredits] = useState(0);
   const [selectedRequest, setSelectedRequest] = useState<ResearchRequest | null>(null);
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
+
+  const userCredits = profile?.credits || 0;
 
   useEffect(() => {
     fetchData();
@@ -101,8 +102,7 @@ export default function Community() {
       fetchPublicSurveys(),
       fetchActiveRequests(),
       fetchMyApplications(),
-      fetchCommunityGroups(),
-      fetchUserCredits()
+      fetchCommunityGroups()
     ]);
     setLoading(false);
   };
@@ -166,17 +166,6 @@ export default function Community() {
     
     if (node) observerRef.current.observe(node);
   }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
-
-  const fetchUserCredits = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("profiles")
-      .select("credits")
-      .eq("id", user.id)
-      .single();
-    
-    if (data) setUserCredits(data.credits || 0);
-  };
 
   const fetchPublicSurveys = async () => {
     const { data, error } = await supabase
@@ -534,7 +523,7 @@ export default function Community() {
           template={selectedTemplate}
           userCredits={userCredits}
           onSuccess={() => {
-            fetchUserCredits();
+            fetchData();
           }}
         />
       )}

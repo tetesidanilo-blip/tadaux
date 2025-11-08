@@ -26,23 +26,10 @@ export const ApplyToResearchDialog = ({
 }: ApplyToResearchDialogProps) => {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [profileIncomplete, setProfileIncomplete] = useState(false);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
 
-  const checkProfile = async () => {
-    if (!user) return;
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("profile_completed")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.profile_completed) {
-      setProfileIncomplete(true);
-    }
-  };
+  const profileIncomplete = !profile?.profile_completed;
 
   const handleApply = async () => {
     if (!user) return;
