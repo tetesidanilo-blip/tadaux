@@ -1,9 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// SECURITY: Input validation schema to prevent injection attacks and resource exhaustion
+const GenerateSurveySchema = z.object({
+  description: z.string().min(1, "Description is required").max(5000, "Description too long"),
+  hasDocument: z.boolean().optional(),
+  language: z.enum(['en', 'it', 'es', 'fr', 'de', 'pt', 'nl', 'pl', 'ru', 'zh', 'ja', 'ko']).default('en'),
+  questionCount: z.number().int().min(1).max(50).optional(),
+  refineQuestion: z.object({
+    question: z.string().max(500, "Question too long"),
+    type: z.string(),
+    options: z.array(z.string()).optional(),
+    feedback: z.string().max(1000, "Feedback too long")
+  }).optional()
+}).strict();
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -11,7 +26,25 @@ serve(async (req) => {
   }
 
   try {
-    const { description, hasDocument, language = 'en', refineQuestion, questionCount } = await req.json();
+    // SECURITY: Parse and validate input before processing
+    const rawBody = await req.json();
+    const validationResult = GenerateSurveySchema.safeParse(rawBody);
+    
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error.format());
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input',
+          details: validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
+      );
+    }
+
+    const { description, hasDocument, language, refineQuestion, questionCount } = validationResult.data;
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {

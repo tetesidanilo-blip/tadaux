@@ -1,4 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
+
+// SECURITY: Input validation schema to prevent injection attacks
+const CloneRequestSchema = z.object({
+  templateId: z.string().uuid("Invalid template ID format"),
+  customTitle: z.string().min(1).max(200, "Title too long").optional()
+}).strict();
 
 // Dynamic CORS whitelist
 const getAllowedOrigins = (): string[] => {
@@ -28,11 +35,6 @@ const getCorsHeaders = (origin: string | null) => {
     'Access-Control-Allow-Credentials': 'true'
   };
 };
-
-interface CloneRequest {
-  templateId: string
-  customTitle?: string
-}
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('Origin');
@@ -68,7 +70,22 @@ Deno.serve(async (req) => {
       })
     }
 
-    const { templateId, customTitle }: CloneRequest = await req.json()
+    // SECURITY: Validate input before processing
+    const rawBody = await req.json()
+    const validationResult = CloneRequestSchema.safeParse(rawBody)
+    
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error.format())
+      return new Response(JSON.stringify({ 
+        error: 'Invalid input',
+        details: validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+      }), { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      })
+    }
+
+    const { templateId, customTitle } = validationResult.data
 
     console.log(`[Clone] User ${user.id} cloning template ${templateId}`)
 
