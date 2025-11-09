@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -9,22 +9,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Calendar as CalendarIcon, Copy, ExternalLink, Eye, Power, PowerOff, Trash2, Plus, BarChart, Clock, Mail, QrCode, Edit, AlertCircle, Crown, Users, Info, Store } from "lucide-react";
+import { Calendar as CalendarIcon, Copy, ExternalLink, Eye, Power, PowerOff, Trash2, Plus, BarChart, Clock, Mail, QrCode, Edit, AlertCircle, Crown, Users, Store } from "lucide-react";
 import { CreditsDisplay } from "@/components/CreditsDisplay";
 import { CreateResearchRequestDialog } from "@/components/CreateResearchRequestDialog";
 import { toast } from "sonner";
-import { format, addDays } from "date-fns";
+import { format } from "date-fns";
 import { SurveyGenerator } from "@/components/SurveyGenerator";
 import { Navbar } from "@/components/Navbar";
-import { QRCodeSVG } from "qrcode.react";
 import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
-import { Calendar as DatePicker } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { ExtendExpiryDialog } from "@/components/dashboard/ExtendExpiryDialog";
+import { DeleteSurveyDialog } from "@/components/dashboard/DeleteSurveyDialog";
+import { QrCodeDialog } from "@/components/dashboard/QrCodeDialog";
+import { ActivateSurveyDialog } from "@/components/dashboard/ActivateSurveyDialog";
 
 interface Survey {
   id: string;
@@ -45,7 +41,6 @@ const Dashboard = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showGenerator, setShowGenerator] = useState(false);
   const [extendSurveyId, setExtendSurveyId] = useState<string | null>(null);
-  const [newExpiryDays, setNewExpiryDays] = useState<number>(7);
   const [qrCodeSurvey, setQrCodeSurvey] = useState<string | null>(null);
   const [editingSurvey, setEditingSurvey] = useState<any | null>(null);
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
@@ -54,10 +49,6 @@ const Dashboard = () => {
   const [findParticipantsSurveyId, setFindParticipantsSurveyId] = useState<string | null>(null);
   const [createRequestDialogOpen, setCreateRequestDialogOpen] = useState(false);
   const [activateSurveyId, setActivateSurveyId] = useState<string | null>(null);
-  const [showExpiry, setShowExpiry] = useState(false);
-  const [expiryDate, setExpiryDate] = useState<Date | undefined>(undefined);
-  const [expiryTime, setExpiryTime] = useState<string>("23:59");
-  const [calendarOpen, setCalendarOpen] = useState(false);
   
   const { user, profile } = useAuth();
   const { t } = useLanguage();
@@ -116,50 +107,6 @@ const Dashboard = () => {
     if (node) observerRef.current.observe(node);
   }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
 
-  const handleExtendExpiry = async () => {
-    if (!extendSurveyId) return;
-
-    try {
-      const newExpiryDate = addDays(new Date(), newExpiryDays);
-      
-      const { error } = await supabase
-        .from("surveys")
-        .update({ expires_at: newExpiryDate.toISOString() })
-        .eq("id", extendSurveyId);
-
-      if (error) throw error;
-
-      toast.success(t("expiryExtended"));
-      // Refresh surveys after extending expiry
-      window.location.reload();
-      setExtendSurveyId(null);
-    } catch (error) {
-      console.error("Error extending expiry:", error);
-      toast.error("Failed to extend expiry");
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deleteId) return;
-
-    try {
-      const { error } = await supabase
-        .from("surveys")
-        .delete()
-        .eq("id", deleteId);
-
-      if (error) throw error;
-
-      toast.success(t("surveyDeleted"));
-      // Refresh surveys after deletion
-      window.location.reload();
-      setDeleteId(null);
-    } catch (error) {
-      console.error("Error deleting survey:", error);
-      toast.error("Failed to delete survey");
-    }
-  };
-
   const handleActivateClick = (id: string, currentState: boolean) => {
     if (currentState) {
       // If currently active, deactivate immediately
@@ -167,24 +114,15 @@ const Dashboard = () => {
     } else {
       // If currently inactive, show activation dialog
       setActivateSurveyId(id);
-      setExpiryDate(undefined);
-      setExpiryTime("23:59");
     }
   };
 
-  const toggleActive = async (id: string, currentState: boolean, expiresAt?: string | null) => {
+  const toggleActive = async (id: string, currentState: boolean) => {
     try {
-      const updateData: any = { is_active: !currentState };
-      
-      // If activating with an expiry date, set it
-      if (!currentState && expiresAt) {
-        updateData.expires_at = expiresAt;
-      }
-      
-      // If deactivating, clear expiry date
-      if (currentState) {
-        updateData.expires_at = null;
-      }
+      const updateData: any = { 
+        is_active: !currentState,
+        expires_at: currentState ? null : undefined // Clear expiry when deactivating
+      };
 
       const { error } = await supabase
         .from("surveys")
@@ -194,7 +132,6 @@ const Dashboard = () => {
       if (error) throw error;
 
       toast.success(!currentState ? t("surveyActivated") : t("surveyDeactivated"));
-      // Refresh surveys after toggle
       window.location.reload();
     } catch (error) {
       console.error("Error toggling survey:", error);
@@ -202,25 +139,8 @@ const Dashboard = () => {
     }
   };
 
-  const handleConfirmActivation = () => {
-    if (!activateSurveyId) return;
-
-    let expiresAtValue: string | null = null;
-
-    if (expiryDate) {
-      // Combine date and time
-      const [hours, minutes] = expiryTime.split(':');
-      const combinedDateTime = new Date(expiryDate);
-      combinedDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-      expiresAtValue = combinedDateTime.toISOString();
-    }
-
-    toggleActive(activateSurveyId, false, expiresAtValue);
-    setCalendarOpen(false);
-    setShowExpiry(false);
-    setActivateSurveyId(null);
-    setExpiryDate(undefined);
-    setExpiryTime("23:59");
+  const refreshSurveys = () => {
+    window.location.reload();
   };
 
   const copyLink = (shareToken: string) => {
@@ -719,185 +639,28 @@ const Dashboard = () => {
         currentTier={profile?.subscription_tier || 'free'}
       />
 
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("deleteConfirm")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("deleteConfirmMsg")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>{t("delete")}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteSurveyDialog
+        surveyId={deleteId}
+        onClose={() => setDeleteId(null)}
+        onSuccess={refreshSurveys}
+      />
 
-      {/* Extend Expiry Dialog */}
-      <Dialog open={!!extendSurveyId} onOpenChange={() => setExtendSurveyId(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("extendExpiry")}</DialogTitle>
-            <DialogDescription>{t("extendExpiryDesc")}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">{t("extendByDays")}</label>
-              <div className="flex gap-2">
-                {[7, 14, 30, 60].map((days) => (
-                  <Button
-                    key={days}
-                    variant={newExpiryDays === days ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setNewExpiryDays(days)}
-                  >
-                    {days} {t("days")}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setExtendSurveyId(null)}>
-              {t("cancel")}
-            </Button>
-            <Button onClick={handleExtendExpiry}>
-              {t("extend")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ExtendExpiryDialog
+        surveyId={extendSurveyId}
+        onClose={() => setExtendSurveyId(null)}
+        onSuccess={refreshSurveys}
+      />
 
-      {/* Activation Dialog */}
-      <Dialog key={activateSurveyId || 'closed'} open={!!activateSurveyId} onOpenChange={(open) => {
-        if (!open) {
-          setCalendarOpen(false);
-          setShowExpiry(false);
-          setActivateSurveyId(null);
-          setExpiryDate(undefined);
-          setExpiryTime("23:59");
-        }
-      }}>
-        <DialogContent className="max-w-md z-50">
-          <DialogHeader>
-            <DialogTitle>Attiva Questionario</DialogTitle>
-            <DialogDescription>
-              {showExpiry ? "Imposta la data di scadenza" : "Vuoi attivare il questionario?"}
-            </DialogDescription>
-          </DialogHeader>
-          
-          {!showExpiry ? (
-            <div className="space-y-4 py-4">
-              <p className="text-sm text-muted-foreground">
-                Puoi attivare il questionario senza scadenza o aggiungere una data di scadenza.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Data di scadenza</Label>
-                <Popover open={calendarOpen} onOpenChange={setCalendarOpen} modal={true}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn("w-full justify-start text-left font-normal", !expiryDate && "text-muted-foreground")}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {expiryDate ? format(expiryDate, "PPP") : <span>Seleziona data</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start" onInteractOutside={() => setCalendarOpen(false)}>
-                    <DatePicker
-                      mode="single"
-                      selected={expiryDate}
-                      onSelect={(date) => {
-                        setExpiryDate(date);
-                        setCalendarOpen(false);
-                      }}
-                      disabled={(date) => date < new Date()}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
+      <ActivateSurveyDialog
+        surveyId={activateSurveyId}
+        onClose={() => setActivateSurveyId(null)}
+        onSuccess={refreshSurveys}
+      />
 
-              {expiryDate && (
-                <div className="space-y-2">
-                  <Label>Ora di scadenza</Label>
-                  <Input
-                    type="time"
-                    value={expiryTime}
-                    onChange={(e) => setExpiryTime(e.target.value)}
-                  />
-                </div>
-              )}
-
-              {expiryDate && (
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    Il questionario scadrà il {format(expiryDate, "PPP")} alle {expiryTime}
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          )}
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setCalendarOpen(false);
-              setShowExpiry(false);
-              setActivateSurveyId(null);
-              setExpiryDate(undefined);
-              setExpiryTime("23:59");
-            }}>
-              Annulla
-            </Button>
-            
-            {!showExpiry && (
-              <Button variant="secondary" onClick={() => setShowExpiry(true)}>
-                Aggiungi scadenza
-              </Button>
-            )}
-            
-            <Button onClick={handleConfirmActivation}>
-              Attiva Questionario
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* QR Code Dialog */}
-      <Dialog open={!!qrCodeSurvey} onOpenChange={() => setQrCodeSurvey(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("qrCode")}</DialogTitle>
-            <DialogDescription>{t("qrCodeDesc")}</DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center justify-center p-6 space-y-4">
-            {qrCodeSurvey && (
-              <>
-                <QRCodeSVG 
-                  value={`${window.location.origin}/survey/${qrCodeSurvey}`}
-                  size={256}
-                  level="H"
-                  includeMargin
-                />
-                <p className="text-sm text-muted-foreground text-center">
-                  {t("scanToAccess")}
-                </p>
-              </>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setQrCodeSurvey(null)}>
-              {t("close")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <QrCodeDialog
+        shareToken={qrCodeSurvey}
+        onClose={() => setQrCodeSurvey(null)}
+      />
 
       {/* Create Research Request Dialog */}
       <CreateResearchRequestDialog
