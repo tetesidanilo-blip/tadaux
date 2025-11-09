@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Languages, LogOut, LayoutDashboard, FileText, User, Crown, Zap, Users, MessageSquare, Store, Briefcase } from "lucide-react";
+import { Languages, LogOut, LayoutDashboard, User, Crown, Zap, Users, MessageSquare, Store, Briefcase } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CreditsDisplay } from "@/components/CreditsDisplay";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
+import tadauxLogo from "@/assets/tadaux-logo.png";
 
 export const Navbar = () => {
   const { user, profile, signOut } = useAuth();
@@ -51,8 +52,8 @@ export const Navbar = () => {
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
-            <FileText className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
+            <img src={tadauxLogo} alt="TaDaUX Logo" className="h-8 w-8" />
+            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
               TaDaUX
             </span>
           </div>
