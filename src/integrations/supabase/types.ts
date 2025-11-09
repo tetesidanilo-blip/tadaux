@@ -534,6 +534,24 @@ export type Database = {
         Args: { description: string; survey_data: Json; title: string }
         Returns: string[]
       }
+      get_public_survey_by_token: {
+        Args: { _share_token: string }
+        Returns: {
+          description: string
+          expired_message: string
+          expires_at: string
+          id: string
+          language: string
+          sections: Json
+          share_token: string
+          status: string
+          title: string
+        }[]
+      }
+      is_survey_publicly_accessible: {
+        Args: { _share_token: string; _survey_id: string }
+        Returns: boolean
+      }
       update_user_credits: {
         Args: {
           _amount: number

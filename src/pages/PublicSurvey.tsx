@@ -54,10 +54,11 @@ const PublicSurvey = () => {
 
   const loadSurvey = async () => {
     try {
+      // SECURITY FIX: Usa funzione security definer per evitare esposizione user_id
       const { data, error } = await supabase
-        .from("surveys")
-        .select("*")
-        .eq("share_token", shareToken)
+        .rpc("get_public_survey_by_token", {
+          _share_token: shareToken
+        })
         .single();
 
       if (error) throw error;
@@ -67,7 +68,8 @@ const PublicSurvey = () => {
         const normalizedData = normalizeSurveyData(data);
         setSurvey({
           ...normalizedData,
-          sections: normalizedData.sections as unknown as Section[]
+          sections: normalizedData.sections as unknown as Section[],
+          is_active: true // La funzione ritorna solo survey attivi
         });
         setLanguage(data.language as "en" | "it");
       }
