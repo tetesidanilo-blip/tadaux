@@ -53,7 +53,7 @@ export const Navbar = () => {
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
             <FileText className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
-              SurveyAI
+              TaDaUX
             </span>
           </div>
 
