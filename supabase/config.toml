@@ -2,3 +2,6 @@ project_id = "sgdfvxmkowuklzmbdgxk"
 
 [functions.generate-survey]
 verify_jwt = false
+
+[functions.backup-to-external]
+verify_jwt = true
