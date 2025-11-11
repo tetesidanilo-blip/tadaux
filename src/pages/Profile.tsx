@@ -16,6 +16,8 @@ import { Crown, Zap, Check, X, Coins, TrendingUp } from "lucide-react";
 import { CreditsDisplay } from "@/components/CreditsDisplay";
 import { CreditHistory } from "@/components/CreditHistory";
 import { BackupDatabaseCard } from "@/components/BackupDatabaseCard";
+import { AdminBackupCard } from "@/components/AdminBackupCard";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 const COUNTRIES = ["Italy", "United States", "United Kingdom", "Germany", "France", "Spain", "Canada", "Australia", "Other"];
 const INTEREST_OPTIONS = ["Gaming", "E-commerce", "B2B", "Healthcare", "Education", "Finance", "Travel", "Food & Beverage", "Technology", "Entertainment"];
@@ -34,6 +36,7 @@ interface ProfileData {
 export default function Profile() {
   const { user, profile: contextProfile, refreshProfile } = useAuth();
   const { toast } = useToast();
+  const { isAdmin, loading: isAdminLoading } = useIsAdmin();
   const [loading, setLoading] = useState(false);
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -397,6 +400,7 @@ export default function Profile() {
           <div className="mt-8">
             <div className="grid gap-6">
               <BackupDatabaseCard />
+              {!isAdminLoading && isAdmin && <AdminBackupCard />}
             </div>
           </div>
 
