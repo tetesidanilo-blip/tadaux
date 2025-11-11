@@ -17,10 +17,14 @@ serve(async (req) => {
     const localSupabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const localClient = createClient(localSupabaseUrl, localSupabaseKey);
 
-    // Authenticate user
+    // SECURITY: Authenticate user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error('Missing authorization header');
+      console.error('Missing authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Missing authentication token' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
     }
 
     const { data: { user }, error: authError } = await localClient.auth.getUser(
@@ -28,10 +32,28 @@ serve(async (req) => {
     );
 
     if (authError || !user) {
-      throw new Error('Unauthorized');
+      console.error('Authentication failed:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Invalid token' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
     }
 
-    console.log(`Starting backup for user: ${user.id}`);
+    // CRITICAL SECURITY: Check if user has admin role
+    const { data: hasAdminRole, error: roleError } = await localClient
+      .rpc('has_role', { _user_id: user.id, _role: 'admin' });
+
+    if (roleError || !hasAdminRole) {
+      console.error(`Forbidden: User ${user.id} attempted admin backup without admin role`);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Forbidden: Admin privileges required for full database backup' 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+      );
+    }
+
+    console.log(`ADMIN FULL BACKUP initiated by user: ${user.id}`);
 
     // Get external Supabase client
     const externalSupabaseUrl = 'https://wnehlqsibqgzydkteptf.supabase.co';
@@ -45,14 +67,11 @@ serve(async (req) => {
       credit_transactions: { success: 0, errors: 0 },
     };
 
-    console.log(`User-scoped backup: exporting data for user ${user.id}`);
-
-    // 1. BACKUP PROFILES (USER-SCOPED)
-    console.log('Backing up user profile...');
+    // ADMIN: Backup ALL profiles
+    console.log('[ADMIN] Backing up all profiles...');
     const { data: profiles, error: profilesError } = await localClient
       .from('profiles')
-      .select('*')
-      .eq('id', user.id);
+      .select('*');
 
     if (profilesError) {
       console.error('Error fetching profiles:', profilesError);
@@ -72,12 +91,11 @@ serve(async (req) => {
       }
     }
 
-    // 2. BACKUP SURVEYS (USER-SCOPED)
-    console.log('Backing up user surveys...');
+    // ADMIN: Backup ALL surveys
+    console.log('[ADMIN] Backing up all surveys...');
     const { data: surveys, error: surveysError } = await localClient
       .from('surveys')
-      .select('*')
-      .eq('user_id', user.id);
+      .select('*');
 
     if (surveysError) {
       console.error('Error fetching surveys:', surveysError);
@@ -97,17 +115,11 @@ serve(async (req) => {
       }
     }
 
-    // 3. BACKUP SURVEY_RESPONSES (USER-SCOPED)
-    console.log('Backing up survey responses...');
-    const surveyIds = surveys?.map(s => s.id) || [];
-    console.log(`Found ${surveys?.length || 0} surveys owned by user`);
-    
-    const { data: responses, error: responsesError } = surveyIds.length > 0 
-      ? await localClient
-          .from('survey_responses')
-          .select('*')
-          .in('survey_id', surveyIds)
-      : { data: [], error: null };
+    // ADMIN: Backup ALL survey_responses
+    console.log('[ADMIN] Backing up all survey responses...');
+    const { data: responses, error: responsesError } = await localClient
+      .from('survey_responses')
+      .select('*');
 
     if (responsesError) {
       console.error('Error fetching responses:', responsesError);
@@ -127,12 +139,11 @@ serve(async (req) => {
       }
     }
 
-    // 4. BACKUP CREDIT_TRANSACTIONS (USER-SCOPED)
-    console.log('Backing up credit transactions...');
+    // ADMIN: Backup ALL credit_transactions
+    console.log('[ADMIN] Backing up all credit transactions...');
     const { data: transactions, error: transactionsError } = await localClient
       .from('credit_transactions')
-      .select('*')
-      .eq('user_id', user.id);
+      .select('*');
 
     if (transactionsError) {
       console.error('Error fetching transactions:', transactionsError);
@@ -152,14 +163,15 @@ serve(async (req) => {
       }
     }
 
-    console.log('Backup completed:', results);
+    console.log('[ADMIN] Full backup completed:', results);
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Backup completed successfully',
+        message: 'Admin full backup completed successfully',
         results,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        initiated_by: user.id
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -168,7 +180,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in backup-to-external function:', error);
+    console.error('Error in admin-full-backup function:', error);
     return new Response(
       JSON.stringify({ 
         success: false,
