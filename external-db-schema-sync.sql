@@ -25,6 +25,19 @@ END $$;
 -- STEP 2: CREATE TABLES
 -- ============================================================================
 
+-- Rimuovi FK constraint da profiles se esiste (necessario per backup)
+DO $$ 
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'profiles_id_fkey' 
+    AND table_name = 'profiles'
+    AND table_schema = 'public'
+  ) THEN
+    ALTER TABLE public.profiles DROP CONSTRAINT profiles_id_fkey;
+  END IF;
+END $$;
+
 -- Table: profiles (SENZA FK per backup - solo storage dati)
 CREATE TABLE IF NOT EXISTS public.profiles (
   id uuid NOT NULL,
