@@ -25,9 +25,9 @@ END $$;
 -- STEP 2: CREATE TABLES
 -- ============================================================================
 
--- Table: profiles
+-- Table: profiles (SENZA FK per backup - solo storage dati)
 CREATE TABLE IF NOT EXISTS public.profiles (
-  id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  id uuid NOT NULL,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   subscription_tier text DEFAULT 'free',
