@@ -87,9 +87,81 @@ Deno.serve(async (req) => {
 
     const { templateId, customTitle } = validationResult.data
 
-    console.log(`[Clone] User ${user.id} cloning template ${templateId}`)
+    console.log(`[Clone] User ${user.id} checking permissions for template ${templateId}`)
 
-    // 2. Chiama la funzione atomica PostgreSQL (singola transazione ACID)
+    // 2. Recupera dati profilo e template in parallelo
+    const [profileResult, templateResult] = await Promise.all([
+      supabaseClient
+        .from('profiles')
+        .select('subscription_tier, credits')
+        .eq('id', user.id)
+        .single(),
+      supabaseClient
+        .from('survey_templates')
+        .select('credit_price, is_free, creator_id')
+        .eq('id', templateId)
+        .single()
+    ])
+
+    if (profileResult.error) {
+      console.error('[Clone] Profile fetch error:', profileResult.error)
+      return new Response(JSON.stringify({ 
+        error: 'Failed to fetch user profile',
+        details: profileResult.error.message
+      }), { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      })
+    }
+
+    if (templateResult.error) {
+      console.error('[Clone] Template fetch error:', templateResult.error)
+      return new Response(JSON.stringify({ 
+        error: 'Template not found',
+        details: templateResult.error.message
+      }), { 
+        status: 404, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      })
+    }
+
+    const profile = profileResult.data
+    const template = templateResult.data
+
+    // 3. Verifica che non stia clonando il proprio template
+    if (template.creator_id === user.id) {
+      console.log(`[Clone] User ${user.id} attempted to clone own template`)
+      return new Response(JSON.stringify({ 
+        error: 'Cannot clone your own template' 
+      }), { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      })
+    }
+
+    // 4. Controllo permessi basato su tier e crediti
+    const requiredCredits = template.is_free ? 0 : template.credit_price
+    const hasProAccess = ['pro', 'business'].includes(profile.subscription_tier)
+
+    console.log(`[Clone] Permission check - Tier: ${profile.subscription_tier}, Credits: ${profile.credits}/${requiredCredits}, Free: ${template.is_free}`)
+
+    // Logica di autorizzazione
+    if (!template.is_free && !hasProAccess && profile.credits < requiredCredits) {
+      console.log(`[Clone] Insufficient credits - Required: ${requiredCredits}, Available: ${profile.credits}`)
+      return new Response(JSON.stringify({
+        error: 'Insufficient credits',
+        required: requiredCredits,
+        available: profile.credits,
+        message: `Servono ${requiredCredits} crediti per clonare questo template. Hai solo ${profile.credits} crediti disponibili.`
+      }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    console.log(`[Clone] Authorization passed - proceeding with clone`)
+
+    // 5. Chiama la funzione atomica PostgreSQL (singola transazione ACID)
     const { data: result, error: cloneError } = await supabaseClient.rpc('clone_template_atomic', {
       _template_id: templateId,
       _cloner_id: user.id,
