@@ -15,6 +15,7 @@ import { SaveSurveyDialog } from "./SaveSurveyDialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSurveyState, Question } from "@/hooks/useSurveyState";
+import { useSurveyActions } from "@/hooks/useSurveyActions";
 
 interface SurveyGeneratorProps {
   onBack: () => void;
@@ -26,6 +27,13 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
   const [state, dispatch] = useSurveyState(editingSurvey);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+  
+  const {
+    generateSurvey: generateSurveyMutation,
+    generateMoreQuestions: generateMoreMutation,
+    refineQuestion: refineMutation,
+    refineBatchQuestions: refineBatchMutation
+  } = useSurveyActions();
   
   // Destructure state for easier access
   const {
@@ -276,40 +284,42 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
     }
 
     dispatch({ type: 'SET_IS_GENERATING', payload: true });
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-survey", {
-        body: { 
-          description: uploadedFile ? `Document: ${uploadedFile.name}` : description,
-          hasDocument: !!uploadedFile,
-          language,
-          questionCount: questionCount
+    
+    generateSurveyMutation.mutate(
+      {
+        description: uploadedFile ? `Document: ${uploadedFile.name}` : description,
+        hasDocument: !!uploadedFile,
+        language,
+        questionCount: questionCount
+      },
+      {
+        onSuccess: (data) => {
+          const newQuestions = data.questions.map((q: Question) => ({
+            ...q,
+            section: sectionName
+          }));
+
+          dispatch({ type: 'ADD_SECTION', payload: { name: sectionName, questions: newQuestions } });
+          dispatch({ type: 'RESET_GENERATION_FORM' });
+
+          toast({
+            title: t("sectionAdded"),
+            description: `${newQuestions.length} ${t("questionsAdded")} "${sectionName}"`,
+          });
         },
-      });
-
-      if (error) throw error;
-
-      const newQuestions = data.questions.map((q: Question) => ({
-        ...q,
-        section: sectionName
-      }));
-
-      dispatch({ type: 'ADD_SECTION', payload: { name: sectionName, questions: newQuestions } });
-      dispatch({ type: 'RESET_GENERATION_FORM' });
-
-      toast({
-        title: t("sectionAdded"),
-        description: `${newQuestions.length} ${t("questionsAdded")} "${sectionName}"`,
-      });
-    } catch (error) {
-      console.error("Error generating survey:", error);
-      toast({
-        title: t("generationFailed"),
-        description: t("failedToGenerate"),
-        variant: "destructive",
-      });
-    } finally {
-      dispatch({ type: 'SET_IS_GENERATING', payload: false });
-    }
+        onError: (error) => {
+          console.error("Error generating survey:", error);
+          toast({
+            title: t("generationFailed"),
+            description: t("failedToGenerate"),
+            variant: "destructive",
+          });
+        },
+        onSettled: () => {
+          dispatch({ type: 'SET_IS_GENERATING', payload: false });
+        }
+      }
+    );
   };
 
   const getQuestionIcon = (type: string) => {
@@ -610,78 +620,80 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
     const section = sections[sectionIndex];
     
     dispatch({ type: 'SET_GENERATING_MORE', payload: sectionIndex });
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-survey", {
-        body: { 
-          description: `Generate additional questions similar to the existing ones in section "${section.name}". Existing questions: ${section.questions.map(q => q.question).join(", ")}`,
-          hasDocument: false,
-          language 
+    
+    generateMoreMutation.mutate(
+      {
+        description: `Generate additional questions similar to the existing ones in section "${section.name}". Existing questions: ${section.questions.map(q => q.question).join(", ")}`,
+        language
+      },
+      {
+        onSuccess: (data) => {
+          const newQuestions = data.questions.map((q: Question) => ({
+            ...q,
+            section: section.name
+          }));
+
+          dispatch({ type: 'ADD_QUESTIONS_TO_SECTION', payload: { sectionIndex, questions: newQuestions } });
+
+          toast({
+            title: t("questionsAdded"),
+            description: `${newQuestions.length} ${t("newQuestionsAdded")}`,
+          });
         },
-      });
-
-      if (error) throw error;
-
-      const newQuestions = data.questions.map((q: Question) => ({
-        ...q,
-        section: section.name
-      }));
-
-      dispatch({ type: 'ADD_QUESTIONS_TO_SECTION', payload: { sectionIndex, questions: newQuestions } });
-
-      toast({
-        title: t("questionsAdded"),
-        description: `${newQuestions.length} ${t("newQuestionsAdded")}`,
-      });
-    } catch (error) {
-      console.error("Error generating more questions:", error);
-      toast({
-        title: t("generationFailed"),
-        description: t("failedToGenerate"),
-        variant: "destructive",
-      });
-    } finally {
-      dispatch({ type: 'SET_GENERATING_MORE', payload: null });
-    }
+        onError: (error) => {
+          console.error("Error generating more questions:", error);
+          toast({
+            title: t("generationFailed"),
+            description: t("failedToGenerate"),
+            variant: "destructive",
+          });
+        },
+        onSettled: () => {
+          dispatch({ type: 'SET_GENERATING_MORE', payload: null });
+        }
+      }
+    );
   };
 
   const generateMoreQuestionsWithDescription = async (sectionIndex: number, description: string) => {
     const section = sections[sectionIndex];
     
     dispatch({ type: 'SET_GENERATING_MORE', payload: sectionIndex });
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-survey", {
-        body: { 
-          description: description,
-          hasDocument: false,
-          language,
-          questionCount: moreQuestionsCount
+    
+    generateMoreMutation.mutate(
+      {
+        description: description,
+        language,
+        questionCount: moreQuestionsCount
+      },
+      {
+        onSuccess: (data) => {
+          const newQuestions = data.questions.map((q: Question) => ({
+            ...q,
+            section: section.name
+          }));
+
+          dispatch({ type: 'ADD_QUESTIONS_TO_SECTION', payload: { sectionIndex, questions: newQuestions } });
+          dispatch({ type: 'SET_MORE_QUESTIONS_COUNT', payload: null });
+
+          toast({
+            title: t("questionsAdded"),
+            description: `${newQuestions.length} ${t("newQuestionsAdded")}`,
+          });
         },
-      });
-
-      if (error) throw error;
-
-      const newQuestions = data.questions.map((q: Question) => ({
-        ...q,
-        section: section.name
-      }));
-
-      dispatch({ type: 'ADD_QUESTIONS_TO_SECTION', payload: { sectionIndex, questions: newQuestions } });
-      dispatch({ type: 'SET_MORE_QUESTIONS_COUNT', payload: null });
-
-      toast({
-        title: t("questionsAdded"),
-        description: `${newQuestions.length} ${t("newQuestionsAdded")}`,
-      });
-    } catch (error) {
-      console.error("Error generating more questions:", error);
-      toast({
-        title: t("generationFailed"),
-        description: t("failedToGenerate"),
-        variant: "destructive",
-      });
-    } finally {
-      dispatch({ type: 'SET_GENERATING_MORE', payload: null });
-    }
+        onError: (error) => {
+          console.error("Error generating more questions:", error);
+          toast({
+            title: t("generationFailed"),
+            description: t("failedToGenerate"),
+            variant: "destructive",
+          });
+        },
+        onSettled: () => {
+          dispatch({ type: 'SET_GENERATING_MORE', payload: null });
+        }
+      }
+    );
   };
 
   const startEditingSectionName = (sectionIndex: number) => {
@@ -751,39 +763,39 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
     }
 
     dispatch({ type: 'SET_APPLYING_FEEDBACK', payload: true });
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-survey", {
-        body: { 
-          refineQuestion: {
-            question: question.question,
-            feedback: feedback,
-            type: question.type,
-            options: question.options
-          },
-          language 
+    
+    refineMutation.mutate(
+      {
+        question: question.question,
+        feedback: feedback,
+        type: question.type,
+        options: question.options,
+        language
+      },
+      {
+        onSuccess: (data) => {
+          const refinedQuestion = data.questions[0];
+
+          dispatch({ type: 'UPDATE_QUESTION_WITH_FEEDBACK', payload: { sectionIndex, questionIndex, question: refinedQuestion } });
+
+          toast({
+            title: t("feedbackApplied"),
+            description: t("feedbackAppliedDesc"),
+          });
         },
-      });
-
-      if (error) throw error;
-
-      const refinedQuestion = data.questions[0];
-
-      dispatch({ type: 'UPDATE_QUESTION_WITH_FEEDBACK', payload: { sectionIndex, questionIndex, question: refinedQuestion } });
-
-      toast({
-        title: t("feedbackApplied"),
-        description: t("feedbackAppliedDesc"),
-      });
-    } catch (error) {
-      console.error("Error applying feedback:", error);
-      toast({
-        title: t("generationFailed"),
-        description: t("failedToGenerate"),
-        variant: "destructive",
-      });
-    } finally {
-      dispatch({ type: 'SET_APPLYING_FEEDBACK', payload: false });
-    }
+        onError: (error) => {
+          console.error("Error applying feedback:", error);
+          toast({
+            title: t("generationFailed"),
+            description: t("failedToGenerate"),
+            variant: "destructive",
+          });
+        },
+        onSettled: () => {
+          dispatch({ type: 'SET_APPLYING_FEEDBACK', payload: false });
+        }
+      }
+    );
   };
 
   const applyFeedbackToMultipleQuestions = async (
@@ -791,61 +803,53 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
     feedback: string
   ) => {
     dispatch({ type: 'SET_APPLYING_FEEDBACK', payload: true });
-    let completed = 0;
 
-    try {
-      for (const {sectionIndex, questionIndex} of questions) {
-        try {
-          const question = sections[sectionIndex].questions[questionIndex];
-          
-          const { data, error } = await supabase.functions.invoke("generate-survey", {
-            body: { 
-              refineQuestion: {
-                question: question.question,
-                feedback: feedback,
-                type: question.type,
-                options: question.options
-              },
-              language 
-            },
+    const questionsToRefine = questions.map(({sectionIndex, questionIndex}) => {
+      const question = sections[sectionIndex].questions[questionIndex];
+      return {
+        question: question.question,
+        feedback: feedback,
+        type: question.type,
+        options: question.options
+      };
+    });
+
+    refineBatchMutation.mutate(
+      {
+        questions: questionsToRefine,
+        language
+      },
+      {
+        onSuccess: (results) => {
+          results.forEach((data, index) => {
+            const { sectionIndex, questionIndex } = questions[index];
+            const refinedQuestion = data.questions[0];
+            dispatch({ type: 'UPDATE_QUESTION_WITH_FEEDBACK', payload: { sectionIndex, questionIndex, question: refinedQuestion } });
           });
 
-          if (error) throw error;
+          toast({
+            title: t("feedbackApplied"),
+            description: `${t("feedbackAppliedDesc")} ${results.length} ${t("questions")}`,
+          });
 
-          const refinedQuestion = data.questions[0];
-
-          dispatch({ type: 'UPDATE_QUESTION_WITH_FEEDBACK', payload: { sectionIndex, questionIndex, question: refinedQuestion } });
-
-          completed++;
-        } catch (error) {
-          console.error(`Error applying feedback to question ${sectionIndex}-${questionIndex}:`, error);
+          dispatch({ type: 'SET_SELECTED_QUESTIONS', payload: [] });
+          if (showingFeedback) {
+            toggleFeedback(showingFeedback.sectionIndex, showingFeedback.questionIndex);
+          }
+        },
+        onError: (error) => {
+          console.error("Error applying feedback to multiple questions:", error);
           toast({
             title: t("generationFailed"),
-            description: `Errore sulla domanda ${questionIndex + 1}`,
+            description: t("failedToGenerate"),
             variant: "destructive",
           });
+        },
+        onSettled: () => {
+          dispatch({ type: 'SET_APPLYING_FEEDBACK', payload: false });
         }
       }
-
-      toast({
-        title: t("feedbackApplied"),
-        description: `${completed} ${t("questionsUpdated")}`,
-      });
-
-      dispatch({ type: 'SET_SELECTED_QUESTIONS', payload: [] });
-      if (showingFeedback) {
-        toggleFeedback(showingFeedback.sectionIndex, showingFeedback.questionIndex);
-      }
-    } catch (error) {
-      console.error("Error applying feedback to multiple questions:", error);
-      toast({
-        title: t("generationFailed"),
-        description: t("failedToGenerate"),
-        variant: "destructive",
-      });
-    } finally {
-      dispatch({ type: 'SET_APPLYING_FEEDBACK', payload: false });
-    }
+    );
   };
 
   const addManualSection = () => {
@@ -888,40 +892,42 @@ export const SurveyGenerator = ({ onBack, editingSurvey }: SurveyGeneratorProps)
     }
 
     dispatch({ type: 'SET_GENERATING_NEW_SECTION', payload: true });
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-survey", {
-        body: { 
-          description: newSectionDescription,
-          hasDocument: false,
-          language: newSectionLanguage,
-          questionCount: newSectionQuestionCount
+    
+    generateSurveyMutation.mutate(
+      {
+        description: newSectionDescription,
+        hasDocument: false,
+        language: newSectionLanguage,
+        questionCount: newSectionQuestionCount
+      },
+      {
+        onSuccess: (data) => {
+          const newQuestions = data.questions.map((q: Question) => ({
+            ...q,
+            section: newSectionTitle
+          }));
+
+          dispatch({ type: 'ADD_SECTION', payload: { name: newSectionTitle, questions: newQuestions } });
+          dispatch({ type: 'RESET_NEW_SECTION_FORM' });
+
+          toast({
+            title: t("sectionAdded"),
+            description: `${newQuestions.length} ${t("questionsAdded")} "${newSectionTitle}"`,
+          });
         },
-      });
-
-      if (error) throw error;
-
-      const newQuestions = data.questions.map((q: Question) => ({
-        ...q,
-        section: newSectionTitle
-      }));
-
-      dispatch({ type: 'ADD_SECTION', payload: { name: newSectionTitle, questions: newQuestions } });
-      dispatch({ type: 'RESET_NEW_SECTION_FORM' });
-
-      toast({
-        title: t("sectionAdded"),
-        description: `${newQuestions.length} ${t("questionsAdded")} "${newSectionTitle}"`,
-      });
-    } catch (error) {
-      console.error("Error generating new section:", error);
-      toast({
-        title: t("generationFailed"),
-        description: t("failedToGenerate"),
-        variant: "destructive",
-      });
-    } finally {
-      dispatch({ type: 'SET_GENERATING_NEW_SECTION', payload: false });
-    }
+        onError: (error) => {
+          console.error("Error generating new section:", error);
+          toast({
+            title: t("generationFailed"),
+            description: t("failedToGenerate"),
+            variant: "destructive",
+          });
+        },
+        onSettled: () => {
+          dispatch({ type: 'SET_GENERATING_NEW_SECTION', payload: false });
+        }
+      }
+    );
   };
 
   return (
