@@ -161,7 +161,38 @@ Deno.serve(async (req) => {
 
     console.log(`[Clone] Authorization passed - proceeding with clone`)
 
-    // 5. Chiama la funzione atomica PostgreSQL (singola transazione ACID)
+    // 5. Tentativo atomico di deduzione crediti (con row-level locking)
+    const { data: deductionSuccess, error: deductError } = await supabaseClient
+      .rpc('deduct_credits_for_clone', {
+        user_id_input: user.id,
+        template_id_input: templateId
+      })
+
+    if (deductError) {
+      console.error('[Clone] Credit deduction failed:', deductError)
+      return new Response(JSON.stringify({ 
+        error: 'Failed to process credits',
+        details: deductError.message
+      }), { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      })
+    }
+
+    if (!deductionSuccess) {
+      console.log('[Clone] Credit deduction returned false - insufficient credits')
+      return new Response(JSON.stringify({
+        error: 'Insufficient credits',
+        message: 'Non hai abbastanza crediti per clonare questo template.'
+      }), {
+        status: 402,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    console.log('[Clone] Credits deducted successfully, proceeding with clone')
+
+    // 6. Chiama la funzione atomica PostgreSQL per la clonazione
     const { data: result, error: cloneError } = await supabaseClient.rpc('clone_template_atomic', {
       _template_id: templateId,
       _cloner_id: user.id,

@@ -550,6 +550,10 @@ export type Database = {
         }
         Returns: Json
       }
+      deduct_credits_for_clone: {
+        Args: { template_id_input: string; user_id_input: string }
+        Returns: boolean
+      }
       extract_survey_keywords: {
         Args: { description: string; survey_data: Json; title: string }
         Returns: string[]
