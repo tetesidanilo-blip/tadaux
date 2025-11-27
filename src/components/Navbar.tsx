@@ -19,7 +19,8 @@ import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
 import tadauxLogo from "@/assets/tadaux-logo.png";
 
 export const Navbar = () => {
-  const { user, profile, signOut } = useAuth();
+  const { user, signOut } = useAuth();
+  const { data: profile } = useProfile(); // <--- Nuovo Hook!
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
