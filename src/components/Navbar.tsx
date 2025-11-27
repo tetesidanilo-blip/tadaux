@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -20,7 +21,7 @@ import tadauxLogo from "@/assets/tadaux-logo.png";
 
 export const Navbar = () => {
   const { user, signOut } = useAuth();
-  const { data: profile } = useProfile(); // <--- Nuovo Hook!
+  const { data: profile } = useProfile();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
