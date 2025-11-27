@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef } from "react";
+import { useProfile } from "@/hooks/useProfile";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -49,9 +50,9 @@ const Dashboard = () => {
   const [findParticipantsSurveyId, setFindParticipantsSurveyId] = useState<string | null>(null);
   const [createRequestDialogOpen, setCreateRequestDialogOpen] = useState(false);
   const [activateSurveyId, setActivateSurveyId] = useState<string | null>(null);
-  
+
   const { user } = useAuth();
-  const { data: profile } = useProfile(); // <--- Nuovo Hook!
+  const { data: profile } = useProfile();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
