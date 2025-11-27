@@ -50,7 +50,8 @@ const Dashboard = () => {
   const [createRequestDialogOpen, setCreateRequestDialogOpen] = useState(false);
   const [activateSurveyId, setActivateSurveyId] = useState<string | null>(null);
   
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
+  const { data: profile } = useProfile(); // <--- Nuovo Hook!
   const { t } = useLanguage();
   const navigate = useNavigate();
 
