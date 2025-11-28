@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -57,7 +58,8 @@ export const SaveSurveyDialog = ({ open, onOpenChange, sections, surveyLanguage,
   const [templatePrice, setTemplatePrice] = useState(0);
   const [priceError, setPriceError] = useState<string | null>(null);
 
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
+  const { data: profile } = useProfile();
   const { t } = useLanguage();
   const navigate = useNavigate();
 

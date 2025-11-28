@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { X } from "lucide-react";
@@ -32,7 +33,8 @@ export const CreateResearchRequestDialog = ({
   const [deadline, setDeadline] = useState("");
   const [matchingEnabled, setMatchingEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
+  const { data: profile } = useProfile();
   const { toast } = useToast();
 
   const userTier = profile?.subscription_tier || 'free';

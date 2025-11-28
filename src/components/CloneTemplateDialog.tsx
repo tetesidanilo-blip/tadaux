@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface CloneTemplateDialogProps {
   open: boolean;
@@ -29,7 +30,8 @@ interface CloneTemplateDialogProps {
 export const CloneTemplateDialog = ({ open, onOpenChange, template, userCredits, onSuccess }: CloneTemplateDialogProps) => {
   const [customTitle, setCustomTitle] = useState("");
   const [cloning, setCloning] = useState(false);
-  const { refreshProfile } = useAuth();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const handleClone = async () => {
@@ -65,7 +67,7 @@ export const CloneTemplateDialog = ({ open, onOpenChange, template, userCredits,
         }
       });
 
-      await refreshProfile(); // Update credits in context
+      await queryClient.invalidateQueries({ queryKey: ["profile", user?.id] }); // Update credits in context
       onOpenChange(false);
       setCustomTitle("");
       onSuccess?.();

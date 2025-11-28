@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ResearchRequestCard } from "@/components/ResearchRequestCard";
 import { ApplyToResearchDialog } from "@/components/ApplyToResearchDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Users, MessageCircle, ExternalLink, FileText, Store, Search } from "lucide-react";
@@ -87,7 +88,8 @@ export default function Community() {
   const [selectedRequest, setSelectedRequest] = useState<ResearchRequest | null>(null);
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
+  const { data: profile } = useProfile();
   const { toast } = useToast();
 
   const userCredits = profile?.credits || 0;
