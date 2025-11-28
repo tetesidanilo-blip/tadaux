@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -26,7 +27,8 @@ export const ApplyToResearchDialog = ({
 }: ApplyToResearchDialogProps) => {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
+  const { data: profile } = useProfile();
   const { toast } = useToast();
 
   const profileIncomplete = !profile?.profile_completed;

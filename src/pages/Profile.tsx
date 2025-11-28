@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import { CreditHistory } from "@/components/CreditHistory";
 import { BackupDatabaseCard } from "@/components/BackupDatabaseCard";
 import { AdminBackupCard } from "@/components/AdminBackupCard";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useQueryClient } from "@tanstack/react-query";
 
 const COUNTRIES = ["Italy", "United States", "United Kingdom", "Germany", "France", "Spain", "Canada", "Australia", "Other"];
 const INTEREST_OPTIONS = ["Gaming", "E-commerce", "B2B", "Healthcare", "Education", "Finance", "Travel", "Food & Beverage", "Technology", "Entertainment"];
@@ -34,7 +36,9 @@ interface ProfileData {
 }
 
 export default function Profile() {
-  const { user, profile: contextProfile, refreshProfile } = useAuth();
+  const { user } = useAuth();
+  const { data: contextProfile } = useProfile();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { isAdmin, loading: isAdminLoading } = useIsAdmin();
   const [loading, setLoading] = useState(false);
@@ -134,7 +138,7 @@ export default function Profile() {
         title: "Profile updated",
         description: "Your profile has been saved successfully.",
       });
-      await refreshProfile();
+      await queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
     }
   };
 
