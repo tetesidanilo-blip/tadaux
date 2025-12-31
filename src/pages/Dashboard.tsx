@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -55,6 +55,7 @@ const Dashboard = () => {
   const { data: profile } = useProfile();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Infinite scroll query for surveys
   const { 
@@ -134,16 +135,16 @@ const Dashboard = () => {
       if (error) throw error;
 
       toast.success(!currentState ? t("surveyActivated") : t("surveyDeactivated"));
-      window.location.reload();
+      queryClient.invalidateQueries({ queryKey: ['surveys', user?.id] });
     } catch (error) {
       console.error("Error toggling survey:", error);
       toast.error("Failed to update survey");
     }
   };
 
-  const refreshSurveys = () => {
-    window.location.reload();
-  };
+  const refreshSurveys = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['surveys', user?.id] });
+  }, [queryClient, user?.id]);
 
   const copyLink = (shareToken: string) => {
     const link = `${window.location.origin}/survey/${shareToken}`;
@@ -261,8 +262,7 @@ const Dashboard = () => {
       if (error) throw error;
 
       toast.success(t("titleUpdated") || "Titolo aggiornato");
-      // Refresh surveys after title update
-      window.location.reload();
+      queryClient.invalidateQueries({ queryKey: ['surveys', user?.id] });
       setEditingTitleId(null);
     } catch (error) {
       console.error("Error updating title:", error);
@@ -288,7 +288,7 @@ const Dashboard = () => {
       onBack={() => {
         setShowGenerator(false);
         setEditingSurvey(null);
-        window.location.reload();
+        refreshSurveys();
       }} 
       editingSurvey={editingSurvey}
     />;
