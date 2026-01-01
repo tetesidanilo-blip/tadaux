@@ -12,7 +12,11 @@ const GenerateSurveySchema = z.object({
   description: z.string().min(1, "Description is required").max(5000, "Description too long"),
   hasDocument: z.boolean().optional(),
   language: z.enum(['en', 'it', 'es', 'fr', 'de', 'pt', 'nl', 'pl', 'ru', 'zh', 'ja', 'ko']).default('en'),
-  questionCount: z.number().int().min(1).max(50).optional(),
+  // Accept null and treat it as undefined (for "Automatic" mode)
+  questionCount: z.preprocess(
+    (val) => (val === null ? undefined : val),
+    z.number().int().min(1).max(50).optional()
+  ),
   refineQuestion: z.object({
     question: z.string().max(500, "Question too long"),
     type: z.string(),

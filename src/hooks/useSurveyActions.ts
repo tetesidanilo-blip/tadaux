@@ -5,7 +5,7 @@ interface GenerateSurveyParams {
   description: string;
   hasDocument: boolean;
   language: string;
-  questionCount: number;
+  questionCount?: number | null;
 }
 
 interface RefineQuestionParams {
@@ -36,13 +36,18 @@ export const useSurveyActions = () => {
   // 1. Mutazione: Genera Survey iniziale
   const generateSurvey = useMutation({
     mutationFn: async (params: GenerateSurveyParams) => {
+      // Build body, omitting questionCount if null/undefined (for "Automatic" mode)
+      const body: Record<string, unknown> = {
+        description: params.description,
+        hasDocument: params.hasDocument,
+        language: params.language,
+      };
+      if (params.questionCount != null) {
+        body.questionCount = params.questionCount;
+      }
+
       const { data, error } = await supabase.functions.invoke("generate-survey", {
-        body: {
-          description: params.description,
-          hasDocument: params.hasDocument,
-          language: params.language,
-          questionCount: params.questionCount,
-        },
+        body,
       });
 
       if (error) throw error;
@@ -53,13 +58,18 @@ export const useSurveyActions = () => {
   // 2. Mutazione: Genera più domande
   const generateMoreQuestions = useMutation({
     mutationFn: async (params: GenerateMoreQuestionsParams) => {
+      // Build body, omitting questionCount if null/undefined
+      const body: Record<string, unknown> = {
+        description: params.description,
+        hasDocument: false,
+        language: params.language,
+      };
+      if (params.questionCount != null) {
+        body.questionCount = params.questionCount;
+      }
+
       const { data, error } = await supabase.functions.invoke("generate-survey", {
-        body: {
-          description: params.description,
-          hasDocument: false,
-          language: params.language,
-          questionCount: params.questionCount,
-        },
+        body,
       });
 
       if (error) throw error;
