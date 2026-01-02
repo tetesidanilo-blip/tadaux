@@ -38,7 +38,7 @@ export const ActivateSurveyDialog = ({ surveyId, onClose, onSuccess }: ActivateS
     if (!surveyId) return;
 
     try {
-      const updateData: any = { is_active: true };
+      const updateData: any = { is_active: true, status: 'published' };
       
       if (expiryDate) {
         const [hours, minutes] = expiryTime.split(':');
